@@ -1,0 +1,164 @@
+name: Master CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      deploy_all:
+        description: 'Deploy all applications'
+        required: false
+        default: false
+        type: boolean
+      deploy_infrastructure:
+        description: 'Deploy infrastructure only'
+        required: false
+        default: false
+        type: boolean
+      deploy_frontend:
+        description: 'Deploy frontend only'
+        required: false
+        default: false
+        type: boolean
+      deploy_backend:
+        description: 'Deploy backend only'
+        required: false
+        default: false
+        type: boolean
+      deploy_monitoring:
+        description: 'Deploy monitoring only'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # Master Build and Test
+  master-build-and-test:
+    name: 🧪 Master Build and Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: 📦 Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: 🔍 Cache Nx computation cache
+        uses: actions/cache@v4
+        with:
+          path: .nx/cache
+          key: nx-master-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            nx-master-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-
+            nx-master-${{ runner.os }}-
+
+      - name: 🧹 Run ESLint (All)
+        run: npx nx run-many -t lint --all
+
+      - name: 🧪 Run Tests (All)
+        run: npx nx run-many -t test --all --coverage
+
+      - name: 🏗️ Build All Applications
+        run: npx nx run-many -t build --all
+
+      - name: 📦 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-builds
+          path: dist/
+          retention-days: 7
+
+  # Trigger Individual Workflows
+  trigger-workflows:
+    name: 🚀 Trigger Individual Workflows
+    needs: master-build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 10
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔐 Get GitHub Token
+        id: github_token
+        run: echo "token=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_OUTPUT
+
+      - name: 🚀 Trigger Infrastructure Deployment
+        if: github.event.inputs.deploy_all == 'true' || github.event.inputs.deploy_infrastructure == 'true' || github.event_name == 'push'
+        run: |
+          echo "🚀 Triggering Infrastructure CI/CD..."
+          gh workflow run infrastructure-ci-cd.yml --ref main
+        env:
+          GITHUB_TOKEN: ${{ steps.github_token.outputs.token }}
+
+      - name: 🚀 Trigger Frontend Deployment
+        if: github.event.inputs.deploy_all == 'true' || github.event.inputs.deploy_frontend == 'true' || github.event_name == 'push'
+        run: |
+          echo "🚀 Triggering Frontend CI/CD..."
+          gh workflow run frontend-ci-cd.yml --ref main
+        env:
+          GITHUB_TOKEN: ${{ steps.github_token.outputs.token }}
+
+      - name: 🚀 Trigger Backend Deployment
+        if: github.event.inputs.deploy_all == 'true' || github.event.inputs.deploy_backend == 'true' || github.event_name == 'push'
+        run: |
+          echo "🚀 Triggering Backend CI/CD..."
+          gh workflow run backend-ci-cd.yml --ref main
+        env:
+          GITHUB_TOKEN: ${{ steps.github_token.outputs.token }}
+
+      - name: 🚀 Trigger Monitoring Deployment
+        if: github.event.inputs.deploy_all == 'true' || github.event.inputs.deploy_monitoring == 'true' || github.event_name == 'push'
+        run: |
+          echo "🚀 Triggering Monitoring CI/CD..."
+          gh workflow run monitoring-ci-cd.yml --ref main
+        env:
+          GITHUB_TOKEN: ${{ steps.github_token.outputs.token }}
+
+      - name: 📢 Deployment Summary
+        run: |
+          echo "✅ All workflows triggered successfully!"
+          echo "📋 Check the Actions tab to monitor individual deployments:"
+          echo "   - Infrastructure: https://github.com/${{ github.repository }}/actions/workflows/infrastructure-ci-cd.yml"
+          echo "   - Frontend: https://github.com/${{ github.repository }}/actions/workflows/frontend-ci-cd.yml"
+          echo "   - Backend: https://github.com/${{ github.repository }}/actions/workflows/backend-ci-cd.yml"
+          echo "   - Monitoring: https://github.com/${{ github.repository }}/actions/workflows/monitoring-ci-cd.yml"
+
+  # Security Scan (Master)
+  security-scan:
+    name: 🔒 Master Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔍 Run Trivy vulnerability scanner (All)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-master-results.sarif'
+
+      - name: 📤 Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-master-results.sarif' 

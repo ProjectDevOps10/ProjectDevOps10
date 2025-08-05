@@ -1,0 +1,147 @@
+name: Infrastructure CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+  AWS_REGION: eu-central-1  # Frankfurt - closest to Israel
+
+jobs:
+  # Build and Test Infrastructure
+  build-and-test:
+    name: 🧪 Build and Test Infrastructure
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: 📦 Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: 🔍 Cache Nx computation cache
+        uses: actions/cache@v4
+        with:
+          path: .nx/cache
+          key: nx-infrastructure-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            nx-infrastructure-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-
+            nx-infrastructure-${{ runner.os }}-
+
+      - name: 🧹 Run ESLint
+        run: npx nx lint infrastructure --format=stylish
+
+      - name: 🧪 Run Tests
+        run: npx nx test infrastructure --coverage
+
+      - name: 🏗️ Build Infrastructure
+        run: npx nx build infrastructure
+
+      - name: 📦 Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: infrastructure-build
+          path: dist/apps/infrastructure
+          retention-days: 7
+
+  # Deploy Infrastructure
+  deploy-infrastructure:
+    name: 🚀 Deploy Infrastructure
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    timeout-minutes: 30
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: 📦 Install dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: 🔐 Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: 📦 Install AWS CDK
+        run: npm install -g aws-cdk
+
+      - name: 🔍 Cache Nx computation cache
+        uses: actions/cache@v4
+        with:
+          path: .nx/cache
+          key: nx-infrastructure-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            nx-infrastructure-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-
+            nx-infrastructure-${{ runner.os }}-
+
+      - name: 🏗️ Build Infrastructure
+        run: npx nx build infrastructure
+
+      - name: 🔧 Bootstrap CDK (if needed)
+        run: |
+          cd dist/apps/infrastructure
+          cdk bootstrap aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ env.AWS_REGION }} || echo "CDK already bootstrapped"
+
+      - name: 🚀 Deploy Infrastructure
+        run: |
+          cd dist/apps/infrastructure
+          echo "🚀 Deploying infrastructure to AWS..."
+          cdk deploy --all --require-approval never
+          
+          echo "✅ Infrastructure deployed successfully!"
+
+      - name: 📊 Infrastructure Status
+        run: |
+          echo "📋 EKS Cluster Status:"
+          aws eks describe-cluster --region ${{ env.AWS_REGION }} --name iagent-cluster --query 'cluster.status' --output text || echo "Cluster not found"
+          
+          echo "📦 ECR Repositories:"
+          aws ecr describe-repositories --region ${{ env.AWS_REGION }} --query 'repositories[?contains(repositoryName, `iagent`)].repositoryName' --output table || echo "No ECR repositories found"
+
+  # Security Scan
+  security-scan:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔍 Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: 'apps/infrastructure'
+          format: 'sarif'
+          output: 'trivy-infrastructure-results.sarif'
+
+      - name: 📤 Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-infrastructure-results.sarif' 

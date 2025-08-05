@@ -1,0 +1,166 @@
+{
+  "name": "infrastructure",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/infrastructure/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/infrastructure",
+        "main": "apps/infrastructure/src/main.ts",
+        "tsConfig": "apps/infrastructure/tsconfig.app.json",
+        "assets": ["apps/infrastructure/src/assets"]
+      }
+    },
+    "serve": {
+      "executor": "@nx/js:node",
+      "options": {
+        "buildTarget": "infrastructure:build"
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "apps/infrastructure/jest.config.ts",
+        "passWithNoTests": true
+      },
+      "configurations": {
+        "ci": {
+          "ci": true,
+          "codeCoverage": true
+        }
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"]
+    },
+    "deploy": {
+      "executor": "@nx/js:node",
+      "options": {
+        "buildTarget": "infrastructure:build",
+        "script": "cd dist/apps/infrastructure && cdk deploy --all --require-approval never"
+      },
+      "configurations": {
+        "prod": {
+          "script": "cd dist/apps/infrastructure && cdk deploy --all --require-approval never --context environment=production"
+        },
+        "dev": {
+          "script": "cd dist/apps/infrastructure && cdk deploy --all --require-approval never --context environment=development"
+        }
+      }
+    },
+    "destroy": {
+      "executor": "@nx/js:node",
+      "options": {
+        "buildTarget": "infrastructure:build",
+        "script": "cd dist/apps/infrastructure && cdk destroy --all --force"
+      },
+      "configurations": {
+        "force": {
+          "script": "cd dist/apps/infrastructure && cdk destroy --all --force --require-approval never"
+        }
+      }
+    },
+    "synth": {
+      "executor": "@nx/js:node",
+      "options": {
+        "buildTarget": "infrastructure:build",
+        "script": "cd dist/apps/infrastructure && cdk synth"
+      }
+    },
+    "diff": {
+      "executor": "@nx/js:node",
+      "options": {
+        "buildTarget": "infrastructure:build",
+        "script": "cd dist/apps/infrastructure && cdk diff"
+      }
+    },
+    "bootstrap": {
+      "executor": "@nx/js:node",
+      "options": {
+        "buildTarget": "infrastructure:build",
+        "script": "cd dist/apps/infrastructure && cdk bootstrap"
+      }
+    },
+    "status": {
+      "executor": "@nx/js:node",
+      "options": {
+        "buildTarget": "infrastructure:build",
+        "script": "cd dist/apps/infrastructure && cdk list"
+      }
+    },
+    "logs": {
+      "executor": "@nx/js:node",
+      "options": {
+        "buildTarget": "infrastructure:build",
+        "script": "cd dist/apps/infrastructure && cdk logs"
+      }
+    },
+    "monitor": {
+      "executor": "@nx/js:node",
+      "options": {
+        "buildTarget": "infrastructure:build",
+        "script": "cd dist/apps/infrastructure && cdk watch"
+      }
+    },
+    "validate": {
+      "executor": "@nx/js:node",
+      "options": {
+        "buildTarget": "infrastructure:build",
+        "script": "cd dist/apps/infrastructure && cdk validate"
+      }
+    },
+    "metadata": {
+      "executor": "@nx/js:node",
+      "options": {
+        "buildTarget": "infrastructure:build",
+        "script": "cd dist/apps/infrastructure && cdk metadata"
+      }
+    },
+    "context": {
+      "executor": "@nx/js:node",
+      "options": {
+        "buildTarget": "infrastructure:build",
+        "script": "cd dist/apps/infrastructure && cdk context"
+      }
+    },
+    "doctor": {
+      "executor": "@nx/js:node",
+      "options": {
+        "buildTarget": "infrastructure:build",
+        "script": "cd dist/apps/infrastructure && cdk doctor"
+      }
+    },
+    "init": {
+      "executor": "@nx/js:node",
+      "options": {
+        "script": "cd apps/infrastructure && cdk init app --language typescript"
+      }
+    },
+    "clean": {
+      "executor": "@nx/js:node",
+      "options": {
+        "script": "cd dist/apps/infrastructure && rm -rf cdk.out"
+      }
+    },
+    "cost": {
+      "executor": "@nx/js:node",
+      "options": {
+        "buildTarget": "infrastructure:build",
+        "script": "cd dist/apps/infrastructure && cdk diff --context show-costs=true"
+      }
+    },
+    "security": {
+      "executor": "@nx/js:node",
+      "options": {
+        "buildTarget": "infrastructure:build",
+        "script": "cd dist/apps/infrastructure && cdk diff --context security-scan=true"
+      }
+    }
+  },
+  "tags": ["scope:infrastructure", "type:app"]
+} 
