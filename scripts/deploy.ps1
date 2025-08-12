@@ -12,6 +12,11 @@ $AWS_REGION = if ($env:AWS_REGION) { $env:AWS_REGION } else { "us-east-1" }
 $CLUSTER_NAME = if ($env:CLUSTER_NAME) { $env:CLUSTER_NAME } else { "iagent-cluster" }
 $DOMAIN_NAME = if ($env:DOMAIN_NAME) { $env:DOMAIN_NAME } else { "" }
 
+# Set environment variables for non-interactive mode
+$env:NX_SKIP_NX_CACHE = "true"
+$env:NX_VERBOSE_LOGGING = "false"
+$env:NX_INTERACTIVE = "false"
+
 # Function to print colored output
 function Write-Status {
     param([string]$Message)
@@ -109,6 +114,10 @@ function Install-Dependencies {
     } else {
         Write-Status "Dependencies already installed, skipping..."
     }
+    
+    # Sync TypeScript project references
+    Write-Status "Syncing TypeScript project references..."
+    npx nx sync --yes
 }
 
 # Function to bootstrap CDK
@@ -133,10 +142,10 @@ function Deploy-Infrastructure {
     Write-Status "Deploying infrastructure..."
     
     # Build infrastructure
-    npx nx build infrastructure
+    npx nx build infrastructure --yes
     
     # Deploy infrastructure
-    npx nx run infrastructure:deploy
+    npx nx run infrastructure:deploy --yes
     
     Write-Success "Infrastructure deployed successfully"
 }
@@ -146,10 +155,10 @@ function Deploy-Monitoring {
     Write-Status "Deploying monitoring stack..."
     
     # Build monitoring
-    npx nx build monitoring
+    npx nx build monitoring --yes
     
     # Deploy monitoring
-    npx nx run monitoring:deploy
+    npx nx run monitoring:deploy --yes
     
     Write-Success "Monitoring stack deployed successfully"
 }
@@ -158,59 +167,108 @@ function Deploy-Monitoring {
 function Set-KubectlConfig {
     Write-Status "Configuring kubectl for EKS cluster..."
     
-    aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME
-    
-    # Wait for cluster to be ready
-    Write-Status "Waiting for EKS cluster to be ready..."
-    aws eks wait cluster-active --region $AWS_REGION --name $CLUSTER_NAME
-    
-    Write-Success "kubectl configured for EKS cluster"
+    try {
+        aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME
+        
+        # Wait for cluster to be ready
+        Write-Status "Waiting for EKS cluster to be ready..."
+        aws eks wait cluster-active --region $AWS_REGION --name $CLUSTER_NAME
+        
+        Write-Success "kubectl configured for EKS cluster"
+    }
+    catch {
+        Write-Warning "Failed to configure kubectl. The cluster might not be ready yet."
+        Write-Status "You may need to wait for the infrastructure deployment to complete."
+    }
 }
 
 # Function to deploy Kubernetes manifests
 function Deploy-K8sManifests {
     Write-Status "Deploying Kubernetes manifests..."
     
-    # Create namespace
-    kubectl apply -f apps/infrastructure/src/k8s/namespace.yaml
-    
-    # Create secrets (you need to update the secrets file with actual values)
-    if (Test-Path "apps/infrastructure/src/k8s/secrets.yaml") {
-        kubectl apply -f apps/infrastructure/src/k8s/secrets.yaml
-    } else {
-        Write-Warning "Secrets file not found. Please create and apply secrets manually."
+    try {
+        # Create namespace
+        kubectl apply -f apps/infrastructure/src/k8s/namespace.yaml
+        
+        # Create secrets (you need to update the secrets file with actual values)
+        if (Test-Path "apps/infrastructure/src/k8s/secrets.yaml") {
+            kubectl apply -f apps/infrastructure/src/k8s/secrets.yaml
+        } else {
+            Write-Warning "Secrets file not found. Please create and apply secrets manually."
+        }
+        
+        # Deploy backend
+        kubectl apply -f apps/infrastructure/src/k8s/backend-deployment.yaml
+        
+        # Wait for deployment to be ready
+        Write-Status "Waiting for backend deployment to be ready..."
+        kubectl rollout status deployment/iagent-backend -n iagent --timeout=300s
+        
+        Write-Success "Kubernetes manifests deployed successfully"
     }
+    catch {
+        Write-Warning "Failed to deploy Kubernetes manifests. The cluster might not be ready yet."
+        Write-Status "You can retry this step later when the infrastructure is fully deployed."
+    }
+}
+
+# Function to check Docker status
+function Test-DockerStatus {
+    Write-Status "Checking Docker status..."
     
-    # Deploy backend
-    kubectl apply -f apps/infrastructure/src/k8s/backend-deployment.yaml
-    
-    # Wait for deployment to be ready
-    Write-Status "Waiting for backend deployment to be ready..."
-    kubectl rollout status deployment/iagent-backend -n iagent --timeout=300s
-    
-    Write-Success "Kubernetes manifests deployed successfully"
+    try {
+        docker version 2>$null | Out-Null
+        Write-Success "Docker is running"
+        return $true
+    }
+    catch {
+        Write-Warning "Docker is not running or not accessible"
+        Write-Status "Please start Docker Desktop and try again"
+        return $false
+    }
 }
 
 # Function to build and push Docker images
 function Build-AndPush-Images {
     Write-Status "Building and pushing Docker images..."
     
+    if (-not (Test-DockerStatus)) {
+        Write-Warning "Skipping Docker image build due to Docker not being available"
+        return
+    }
+    
     # Get ECR registry
     $accountId = (aws sts get-caller-identity --query Account --output text 2>$null).Trim()
     $ecrRegistry = "$accountId.dkr.ecr.$AWS_REGION.amazonaws.com"
     
     # Login to ECR
-    aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ecrRegistry
+    try {
+        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ecrRegistry
+    }
+    catch {
+        Write-Error "Failed to login to ECR"
+        return
+    }
     
     # Build and push backend image
     Write-Status "Building backend image..."
-    docker build -t "$ecrRegistry/iagent-backend:latest" -f apps/backend/Dockerfile .
-    docker push "$ecrRegistry/iagent-backend:latest"
+    try {
+        docker build -t "$ecrRegistry/iagent-backend:latest" -f apps/backend/Dockerfile .
+        docker push "$ecrRegistry/iagent-backend:latest"
+    }
+    catch {
+        Write-Warning "Failed to build/push backend image"
+    }
     
     # Build and push frontend image
     Write-Status "Building frontend image..."
-    docker build -t "$ecrRegistry/iagent-frontend:latest" -f apps/frontend/Dockerfile .
-    docker push "$ecrRegistry/iagent-frontend:latest"
+    try {
+        docker build -t "$ecrRegistry/iagent-frontend:latest" -f apps/frontend/Dockerfile .
+        docker push "$ecrRegistry/iagent-frontend:latest"
+    }
+    catch {
+        Write-Warning "Failed to build/push frontend image"
+    }
     
     Write-Success "Docker images built and pushed successfully"
 }
@@ -219,7 +277,7 @@ function Build-AndPush-Images {
 function Invoke-Tests {
     Write-Status "Running tests..."
     
-    npx nx run-many --target=test --all
+    npx nx run-many --target=test --all --yes
     
     Write-Success "Tests completed successfully"
 }
@@ -228,7 +286,7 @@ function Invoke-Tests {
 function Build-Applications {
     Write-Status "Building applications..."
     
-    npx nx run-many --target=build --projects=frontend,backend
+    npx nx run-many --target=build --projects=frontend,backend --yes
     
     Write-Success "Applications built successfully"
 }

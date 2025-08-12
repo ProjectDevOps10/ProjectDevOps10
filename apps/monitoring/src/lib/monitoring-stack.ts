@@ -2,9 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as logs from 'aws-cdk-lib/aws-logs';
-import * as iam from 'aws-cdk-lib/aws-iam';
 import * as sns from 'aws-cdk-lib/aws-sns';
-import * as subscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 import * as actions from 'aws-cdk-lib/aws-cloudwatch-actions';
 
 export interface MonitoringStackProps extends cdk.StackProps {
@@ -151,14 +149,14 @@ export class MonitoringStack extends cdk.Stack {
     });
 
     // Access Log Group
-    const accessLogGroup = new logs.LogGroup(this, 'IAgentAccessLogs', {
+    new logs.LogGroup(this, 'IAgentAccessLogs', {
       logGroupName: '/aws/eks/iagent/access',
       retention: logs.RetentionDays.ONE_MONTH,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
     // Error Log Group
-    const errorLogGroup = new logs.LogGroup(this, 'IAgentErrorLogs', {
+    new logs.LogGroup(this, 'IAgentErrorLogs', {
       logGroupName: '/aws/eks/iagent/errors',
       retention: logs.RetentionDays.ONE_MONTH,
       removalPolicy: cdk.RemovalPolicy.DESTROY,

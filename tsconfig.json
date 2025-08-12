@@ -20,6 +20,15 @@
     },
     {
       "path": "./libs/shared-utils"
+    },
+    {
+      "path": "./apps/infrastructure"
+    },
+    {
+      "path": "./apps/monitoring"
+    },
+    {
+      "path": "./apps/cicd"
     }
   ]
 }

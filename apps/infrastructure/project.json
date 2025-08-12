@@ -39,30 +39,31 @@
       "outputs": ["{options.outputFile}"]
     },
     "deploy": {
-      "executor": "@nx/js:node",
+      "executor": "nx:run-commands",
       "options": {
-        "buildTarget": "infrastructure:build",
-        "script": "cd dist/apps/infrastructure && cdk deploy --all --require-approval never"
+        "command": "cd dist/apps/infrastructure && cdk deploy --all --require-approval never --app src/main.js",
+        "buildTarget": "infrastructure:build"
       },
       "configurations": {
         "prod": {
-          "script": "cd dist/apps/infrastructure && cdk deploy --all --require-approval never --context environment=production"
+          "commands": [
+            "cd dist/apps/infrastructure",
+            "cdk deploy --all --require-approval never --app main.js --context environment=production"
+          ]
         },
         "dev": {
-          "script": "cd dist/apps/infrastructure && cdk deploy --all --require-approval never --context environment=development"
+          "commands": [
+            "cd dist/apps/infrastructure",
+            "cdk deploy --all --require-approval never --app main.js --context environment=development"
+          ]
         }
       }
     },
     "destroy": {
-      "executor": "@nx/js:node",
+      "executor": "nx:run-commands",
       "options": {
-        "buildTarget": "infrastructure:build",
-        "script": "cd dist/apps/infrastructure && cdk destroy --all --force"
-      },
-      "configurations": {
-        "force": {
-          "script": "cd dist/apps/infrastructure && cdk destroy --all --force --require-approval never"
-        }
+        "command": "cd dist/apps/infrastructure && cdk destroy --all --force --require-approval never --app src/main.js",
+        "buildTarget": "infrastructure:build"
       }
     },
     "synth": {

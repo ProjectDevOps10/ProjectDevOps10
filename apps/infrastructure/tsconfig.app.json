@@ -2,7 +2,8 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "../../dist/apps/infrastructure",
-    "types": ["node"]
+    "types": ["node"],
+    "emitDeclarationOnly": false
   },
   "files": ["src/main.ts"],
   "include": ["src/**/*"],

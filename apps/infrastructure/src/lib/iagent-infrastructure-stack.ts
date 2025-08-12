@@ -6,11 +6,11 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as actions from 'aws-cdk-lib/aws-cloudwatch-actions';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 
 export interface IAgentInfrastructureStackProps extends cdk.StackProps {
   domainName?: string;
@@ -30,8 +30,8 @@ export class IAgentInfrastructureStack extends cdk.Stack {
   public readonly hostedZone?: route53.IHostedZone;
   public readonly certificate?: acm.ICertificate;
   public readonly vpc: ec2.Vpc;
-  public readonly alarmTopic?: sns.Topic;
-  public readonly dashboard?: cloudwatch.Dashboard;
+  public alarmTopic?: sns.Topic;
+  public dashboard?: cloudwatch.Dashboard;
   public readonly logGroups: logs.LogGroup[] = [];
 
   constructor(scope: Construct, id: string, props: IAgentInfrastructureStackProps) {
@@ -88,6 +88,9 @@ export class IAgentInfrastructureStack extends cdk.Stack {
       vpcSubnets: [{ subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }],
       defaultCapacity: 0, // We'll add node groups manually
       endpointAccess: eks.EndpointAccess.PUBLIC_AND_PRIVATE,
+      kubectlLayer: lambda.LayerVersion.fromLayerVersionArn(this, 'KubectlLayer', 
+        `arn:aws:lambda:${this.region}:770693421928:layer:KubectlLayer:1`
+      ),
       clusterLogging: [
         eks.ClusterLoggingTypes.API,
         eks.ClusterLoggingTypes.AUDIT,
@@ -459,21 +462,26 @@ export class IAgentInfrastructureStack extends cdk.Stack {
       namespace: 'kube-system',
     });
 
-    clusterAutoscalerServiceAccount.addToPolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: [
-          'autoscaling:DescribeAutoScalingGroups',
-          'autoscaling:DescribeAutoScalingInstances',
-          'autoscaling:DescribeLaunchConfigurations',
-          'autoscaling:DescribeTags',
-          'autoscaling:SetDesiredCapacity',
-          'autoscaling:TerminateInstanceInAutoScalingGroup',
-          'ec2:DescribeLaunchTemplateVersions',
-        ],
-        resources: ['*'],
-      })
-    );
+    // Create IAM policy for cluster autoscaler
+    const clusterAutoscalerPolicy = new iam.Policy(this, 'ClusterAutoscalerPolicy', {
+      statements: [
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'autoscaling:DescribeAutoScalingGroups',
+            'autoscaling:DescribeAutoScalingInstances',
+            'autoscaling:DescribeLaunchConfigurations',
+            'autoscaling:DescribeTags',
+            'autoscaling:SetDesiredCapacity',
+            'autoscaling:TerminateInstanceInAutoScalingGroup',
+            'ec2:DescribeLaunchTemplateVersions',
+          ],
+          resources: ['*'],
+        }),
+      ],
+    });
+
+    clusterAutoscalerPolicy.attachToRole(clusterAutoscalerServiceAccount.role!);
 
     // Deploy Cluster Autoscaler using Helm
     this.cluster.addHelmChart('ClusterAutoscaler', {
@@ -501,94 +509,98 @@ export class IAgentInfrastructureStack extends cdk.Stack {
       namespace: 'kube-system',
     });
 
-    albControllerServiceAccount.addToPolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: [
-          'iam:CreateServiceLinkedRole',
-          'ec2:DescribeAccountAttributes',
-          'ec2:DescribeAddresses',
-          'ec2:DescribeInternetGateways',
-          'ec2:DescribeVpcs',
-          'ec2:DescribeSubnets',
-          'ec2:DescribeSecurityGroups',
-          'ec2:DescribeInstances',
-          'ec2:DescribeNetworkInterfaces',
-          'ec2:DescribeTags',
-          'elasticloadbalancing:DescribeLoadBalancers',
-          'elasticloadbalancing:DescribeLoadBalancerAttributes',
-          'elasticloadbalancing:DescribeListeners',
-          'elasticloadbalancing:DescribeListenerCertificates',
-          'elasticloadbalancing:DescribeSSLPolicies',
-          'elasticloadbalancing:DescribeRules',
-          'elasticloadbalancing:DescribeTargetGroups',
-          'elasticloadbalancing:DescribeTargetGroupAttributes',
-          'elasticloadbalancing:DescribeTargetHealth',
-          'elasticloadbalancing:DescribeTags',
-        ],
-        resources: ['*'],
-      })
-    );
+    // Create IAM policy for ALB Controller
+    const albControllerPolicy = new iam.Policy(this, 'ALBControllerPolicy', {
+      statements: [
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'iam:CreateServiceLinkedRole',
+            'ec2:DescribeAccountAttributes',
+            'ec2:DescribeAddresses',
+            'ec2:DescribeInternetGateways',
+            'ec2:DescribeVpcs',
+            'ec2:DescribeSubnets',
+            'ec2:DescribeSecurityGroups',
+            'ec2:DescribeInstances',
+            'ec2:DescribeNetworkInterfaces',
+            'ec2:DescribeTags',
+            'elasticloadbalancing:DescribeLoadBalancers',
+            'elasticloadbalancing:DescribeLoadBalancerAttributes',
+            'elasticloadbalancing:DescribeListeners',
+            'elasticloadbalancing:DescribeListenerCertificates',
+            'elasticloadbalancing:DescribeSSLPolicies',
+            'elasticloadbalancing:DescribeRules',
+            'elasticloadbalancing:DescribeTargetGroups',
+            'elasticloadbalancing:DescribeTargetGroupAttributes',
+            'elasticloadbalancing:DescribeTargetHealth',
+            'elasticloadbalancing:DescribeTags',
+          ],
+          resources: ['*'],
+        }),
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'cognito-idp:DescribeUserPoolClient',
+            'acm:ListCertificates',
+            'acm:DescribeCertificate',
+            'iam:ListServerCertificates',
+            'iam:GetServerCertificate',
+            'waf-regional:GetWebACL',
+            'waf-regional:GetWebACLForResource',
+            'waf-regional:AssociateWebACL',
+            'waf-regional:DisassociateWebACL',
+            'wafv2:GetWebACL',
+            'wafv2:GetWebACLForResource',
+            'wafv2:AssociateWebACL',
+            'wafv2:DisassociateWebACL',
+            'shield:DescribeProtection',
+            'shield:GetSubscriptionState',
+            'ec2:AuthorizeSecurityGroupIngress',
+            'ec2:RevokeSecurityGroupIngress',
+          ],
+          resources: ['*'],
+        }),
+      ],
+    });
 
-    albControllerServiceAccount.addToPolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: [
-          'cognito-idp:DescribeUserPoolClient',
-          'acm:ListCertificates',
-          'acm:DescribeCertificate',
-          'iam:ListServerCertificates',
-          'iam:GetServerCertificate',
-          'waf-regional:GetWebACL',
-          'waf-regional:GetWebACLForResource',
-          'waf-regional:AssociateWebACL',
-          'waf-regional:DisassociateWebACL',
-          'wafv2:GetWebACL',
-          'wafv2:GetWebACLForResource',
-          'wafv2:AssociateWebACL',
-          'wafv2:DisassociateWebACL',
-          'shield:DescribeProtection',
-          'shield:GetSubscriptionState',
-          'ec2:AuthorizeSecurityGroupIngress',
-          'ec2:RevokeSecurityGroupIngress',
-        ],
-        resources: ['*'],
-      })
-    );
+    albControllerPolicy.attachToRole(albControllerServiceAccount.role!);
 
-    albControllerServiceAccount.addToPolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: [
-          'elasticloadbalancing:CreateLoadBalancer',
-          'elasticloadbalancing:CreateTargetGroup',
-        ],
-        resources: ['*'],
-        conditions: {
-          StringEquals: {
-            'aws:RequestTag/kubernetes.io/cluster/iagent-cluster': 'owned',
+    // Add additional policies to the ALB Controller
+    const albControllerAdditionalPolicy = new iam.Policy(this, 'ALBControllerAdditionalPolicy', {
+      statements: [
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'elasticloadbalancing:CreateLoadBalancer',
+            'elasticloadbalancing:CreateTargetGroup',
+          ],
+          resources: ['*'],
+          conditions: {
+            StringEquals: {
+              'aws:RequestTag/kubernetes.io/cluster/iagent-cluster': 'owned',
+            },
           },
-        },
-      })
-    );
+        }),
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'elasticloadbalancing:CreateListener',
+            'elasticloadbalancing:DeleteListener',
+            'elasticloadbalancing:CreateRule',
+            'elasticloadbalancing:DeleteRule',
+            'elasticloadbalancing:SetWebAcl',
+            'elasticloadbalancing:ModifyListener',
+            'elasticloadbalancing:AddListenerCertificates',
+            'elasticloadbalancing:RemoveListenerCertificates',
+            'elasticloadbalancing:ModifyRule',
+          ],
+          resources: ['*'],
+        }),
+      ],
+    });
 
-    albControllerServiceAccount.addToPolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: [
-          'elasticloadbalancing:CreateListener',
-          'elasticloadbalancing:DeleteListener',
-          'elasticloadbalancing:CreateRule',
-          'elasticloadbalancing:DeleteRule',
-          'elasticloadbalancing:SetWebAcl',
-          'elasticloadbalancing:ModifyListener',
-          'elasticloadbalancing:AddListenerCertificates',
-          'elasticloadbalancing:RemoveListenerCertificates',
-          'elasticloadbalancing:ModifyRule',
-        ],
-        resources: ['*'],
-      })
-    );
+    albControllerAdditionalPolicy.attachToRole(albControllerServiceAccount.role!);
 
     // Deploy AWS Load Balancer Controller using Helm
     this.cluster.addHelmChart('AwsLoadBalancerController', {
@@ -613,26 +625,28 @@ export class IAgentInfrastructureStack extends cdk.Stack {
       namespace: 'kube-system',
     });
 
-    externalDnsServiceAccount.addToPolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: [
-          'route53:ChangeResourceRecordSets',
-        ],
-        resources: ['arn:aws:route53:::hostedzone/*'],
-      })
-    );
+    // Create IAM policy for External DNS
+    const externalDnsPolicy = new iam.Policy(this, 'ExternalDNSPolicy', {
+      statements: [
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'route53:ChangeResourceRecordSets',
+          ],
+          resources: ['arn:aws:route53:::hostedzone/*'],
+        }),
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'route53:ListResourceRecordSets',
+            'route53:ListHostedZonesByName',
+          ],
+          resources: ['*'],
+        }),
+      ],
+    });
 
-    externalDnsServiceAccount.addToPolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: [
-          'route53:ListResourceRecordSets',
-          'route53:ListHostedZonesByName',
-        ],
-        resources: ['*'],
-      })
-    );
+    externalDnsPolicy.attachToRole(externalDnsServiceAccount.role!);
 
     // Deploy External DNS using Helm
     this.cluster.addHelmChart('ExternalDNS', {

@@ -33,10 +33,17 @@
       "outputs": ["{options.outputFile}"]
     },
     "deploy": {
-      "executor": "@nx/js:node",
+      "executor": "nx:run-commands",
       "options": {
-        "buildTarget": "monitoring:build",
-        "script": "dist/apps/monitoring/src/main.js"
+        "command": "cd dist/apps/monitoring && cdk deploy --all --require-approval never --app src/main.js",
+        "buildTarget": "monitoring:build"
+      }
+    },
+    "destroy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cd dist/apps/monitoring && cdk destroy --all --force --require-approval never --app src/main.js",
+        "buildTarget": "monitoring:build"
       }
     }
   },
