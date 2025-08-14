@@ -10,7 +10,7 @@ on:
 env:
   NODE_VERSION: '18'
   AWS_REGION: eu-central-1  # Frankfurt - closest to Israel
-  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com
   EKS_CLUSTER_NAME: iagent-cluster
 
 jobs:

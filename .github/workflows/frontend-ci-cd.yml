@@ -9,6 +9,7 @@ on:
 
 env:
   NODE_VERSION: '18'
+  AWS_REGION: eu-central-1  # Frankfurt - closest to Israel
 
 jobs:
   # Build and Test Frontend

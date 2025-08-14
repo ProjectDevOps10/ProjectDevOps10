@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: eu-central-1  # Frankfurt - closest to Israel
   CLUSTER_NAME: iagent-cluster
   ECR_REPOSITORY_BACKEND: iagent-backend
   ECR_REPOSITORY_FRONTEND: iagent-frontend
