@@ -1,7 +1,6 @@
 #!/usr/bin/env node
-import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
-import { IAgentInfrastructureStack } from './lib/iagent-infrastructure-stack';
+import { CostOptimizedInfrastructureStack } from './lib/cost-optimized-infrastructure-stack.js';
 
 const app = new cdk.App();
 
@@ -16,7 +15,7 @@ const nodeGroupMaxSize = parseInt(process.env.NODE_GROUP_MAX_SIZE || '3');
 const nodeGroupDesiredSize = parseInt(process.env.NODE_GROUP_DESIRED_SIZE || '2');
 
 // Create the main infrastructure stack
-new IAgentInfrastructureStack(app, 'IAgentInfrastructureStack', {
+new CostOptimizedInfrastructureStack(app, 'IAgentInfrastructureStack', {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION || 'eu-central-1', // Frankfurt - closest to Israel

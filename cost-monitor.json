@@ -1,0 +1,16 @@
+{
+  "BudgetLimit": {
+    "Amount": "10.0",
+    "Unit": "USD"
+  },
+  "TimeUnit": "MONTHLY",
+  "TimePeriod": {
+    "Start": "2025-08-01",
+    "End": "2025-09-01"
+  },
+  "BudgetName": "iAgent-DevOps-Budget",
+  "BudgetType": "COST",
+  "CostFilters": {
+    "Service": ["Amazon Elastic Kubernetes Service", "Amazon Elastic Container Registry", "Amazon CloudWatch"]
+  }
+}

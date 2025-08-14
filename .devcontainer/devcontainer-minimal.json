@@ -1,5 +1,5 @@
 {
-  "name": "iAgent Simple DevOps Container",
+  "name": "iAgent DevOps (Minimal)",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:18",
   
   "features": {
@@ -10,20 +10,15 @@
   
   "forwardPorts": [3000, 4200],
   
-  "postCreateCommand": "npm install && npm install -g aws-cdk",
+  "postCreateCommand": "npm install",
   
   "customizations": {
     "vscode": {
       "extensions": [
         "ms-vscode.vscode-typescript-next",
         "amazonwebservices.aws-toolkit-vscode",
-        "ms-kubernetes-tools.vscode-kubernetes-tools",
-        "ms-vscode.vscode-docker"
+        "ms-kubernetes-tools.vscode-kubernetes-tools"
       ]
     }
-  },
-  
-  "containerEnv": {
-    "AWS_DEFAULT_REGION": "eu-central-1"
   }
 }

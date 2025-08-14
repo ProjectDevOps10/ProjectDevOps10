@@ -1,0 +1,59 @@
+{
+  "name": "iAgent DevOps Container",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  
+  "features": {},
+  
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "files.watcherExclude": {
+          "**/node_modules/**": true,
+          "**/.git/**": true,
+          "**/dist/**": true,
+          "**/build/**": true
+        }
+      },
+      
+      "extensions": [
+        "ms-vscode.vscode-typescript-next",
+        "ms-vscode.vscode-json",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-eslint",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "amazonwebservices.aws-toolkit-vscode",
+        "github.vscode-github-actions",
+        "ms-vscode.vscode-docker",
+        "redhat.vscode-yaml"
+      ]
+    }
+  },
+  
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  ],
+  
+  "containerEnv": {
+    "AWS_DEFAULT_REGION": "eu-central-1",
+    "NODE_ENV": "development"
+  },
+  
+  "forwardPorts": [3000, 4200],
+  
+  "portsAttributes": {
+    "3000": {
+      "label": "Backend API"
+    },
+    "4200": {
+      "label": "Frontend"
+    }
+  },
+  
+  "postCreateCommand": "/home/devuser/show-versions.sh",
+  
+  "remoteUser": "devuser"
+}
