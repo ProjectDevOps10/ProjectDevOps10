@@ -39,6 +39,7 @@ A complete containerized development environment with all tools pre-installed fo
 - **Docker CLI** - Container management
 - **AWS CDK** - Infrastructure as Code
 - **GitHub CLI** - GitHub integration
+- **Act** - Local GitHub Actions testing
 - **Helm** - Kubernetes package manager
 - **Trivy** - Security vulnerability scanner
 

@@ -125,4 +125,4 @@ temp/
 # Embedded git repositories
 iagent/
 # Keep org directory but ignore any nested .git
-org/**/.git 
+org/**/.git .secrets

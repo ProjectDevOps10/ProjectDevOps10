@@ -5,12 +5,13 @@
   "features": {
     "ghcr.io/devcontainers/features/aws-cli:1": {},
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
-    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {}
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
   },
   
   "forwardPorts": [3000, 4200],
   
-  "postCreateCommand": "npm install && npm install -g aws-cdk",
+  "postCreateCommand": "npm install && npm install -g aws-cdk && curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash && sudo mv bin/act /usr/local/bin/ 2>/dev/null || true",
   
   "customizations": {
     "vscode": {
@@ -18,7 +19,9 @@
         "ms-vscode.vscode-typescript-next",
         "amazonwebservices.aws-toolkit-vscode",
         "ms-kubernetes-tools.vscode-kubernetes-tools",
-        "ms-vscode.vscode-docker"
+        "ms-vscode.vscode-docker",
+        "github.vscode-github-actions",
+        "github.vscode-pull-request-github"
       ]
     }
   },
