@@ -1,0 +1,95 @@
+name: Simple CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  AWS_REGION: eu-central-1
+  CLUSTER_NAME: iagent-cluster
+
+jobs:
+  # Simple Build & Test
+  build-and-test:
+    name: 🚀 Build & Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🔧 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: 📦 Install dependencies
+      run: npm ci
+      
+    - name: 🔄 Sync Nx
+      run: npx nx sync --yes
+      
+    - name: 🧪 Run tests
+      run: npx nx run-many --target=test --projects=frontend,backend --yes
+      
+    - name: 🏗️ Build apps
+      run: npx nx run-many --target=build --projects=frontend,backend --yes
+
+  # Simple Deploy (only on main)
+  deploy:
+    name: 🚀 Deploy
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🔧 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: 📦 Install dependencies
+      run: npm ci
+      
+    - name: 🔐 Configure AWS
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+        
+    - name: 🐳 Login to ECR
+      uses: aws-actions/amazon-ecr-login@v2
+      
+    - name: 🏗️ Build & Push Images
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Build and push backend
+        docker build -t $ECR_REGISTRY/iagent-backend:$IMAGE_TAG -f apps/backend/Dockerfile .
+        docker push $ECR_REGISTRY/iagent-backend:$IMAGE_TAG
+        
+        # Build and push frontend
+        docker build -t $ECR_REGISTRY/iagent-frontend:$IMAGE_TAG -f apps/frontend/Dockerfile .
+        docker push $ECR_REGISTRY/iagent-frontend:$IMAGE_TAG
+        
+    - name: 🚀 Deploy to EKS
+      run: |
+        aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
+        kubectl apply -f apps/infrastructure/src/k8s/namespace.yaml
+        kubectl set image deployment/iagent-backend iagent-backend=${{ steps.login-ecr.outputs.registry }}/iagent-backend:${{ github.sha }} -n iagent
+        kubectl rollout status deployment/iagent-backend -n iagent --timeout=300s
+        
+    - name: ✅ Success
+      run: |
+        echo "🚀 Deployment completed successfully!"
+        echo "📊 Backend deployed to EKS"
+        echo "🐳 Images pushed to ECR"

@@ -418,7 +418,7 @@ export class IAgentInfrastructureStack extends cdk.Stack {
   }
 
   // Public method to enable/disable monitoring
-  public enableMonitoring(enable: boolean = true): void {
+  public enableMonitoring(enable = true): void {
     if (enable && !this.dashboard) {
       this.setupMonitoring(true);
     }
