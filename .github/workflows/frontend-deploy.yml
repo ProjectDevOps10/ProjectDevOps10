@@ -24,8 +24,6 @@ jobs:
       pages: write
       id-token: write
     
-
-    
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
@@ -76,3 +74,8 @@ jobs:
           echo "🌐 URL: ${{ steps.deployment.outputs.page_url }}"
           echo "📝 Commit: ${{ github.sha }}"
           echo "🏷️ Branch: ${{ github.ref_name }}"
+          echo ""
+          echo "📋 Next Steps:"
+          echo "1. Go to repository Settings → Pages"
+          echo "2. Set Source to 'GitHub Actions'"
+          echo "3. Your site will be available at the URL above"
