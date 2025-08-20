@@ -17,7 +17,7 @@ COPY libs ./libs
 RUN npm ci
 
 # Build the application
-RUN npm run build:frontend
+RUN npx nx build frontend
 
 # Production stage with nginx
 FROM nginx:alpine AS production

@@ -1,0 +1,87 @@
+name: 🧹 Cleanup & Teardown
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Cleanup action'
+        required: true
+        default: 'status'
+        type: choice
+        options:
+          - status
+          - destroy-infra
+          - cleanup-all
+
+env:
+  AWS_REGION: eu-central-1
+  CLUSTER_NAME: iagent-cluster
+
+jobs:
+  cleanup:
+    name: 🧹 Cleanup Operations
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🔧 Setup Node.js 18
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: 📦 Install dependencies
+      run: npm ci
+      
+    - name: 🔄 Sync Nx workspace
+      run: npx nx sync --yes
+      
+    - name: 🔐 Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+        
+    - name: 📊 Check Infrastructure Status
+      if: github.event.inputs.action == 'status'
+      run: |
+        echo "📊 Checking infrastructure status..."
+        cd dist/apps/infrastructure
+        cdk list
+        echo "✅ Status check completed!"
+        
+    - name: 💥 Destroy Infrastructure
+      if: github.event.inputs.action == 'destroy-infra'
+      run: |
+        echo "💥 Destroying infrastructure..."
+        cd dist/apps/infrastructure
+        cdk destroy --all --force --require-approval never
+        echo "✅ Infrastructure destroyed successfully!"
+        
+    - name: 🧹 Cleanup All
+      if: github.event.inputs.action == 'cleanup-all'
+      run: |
+        echo "🧹 Starting complete cleanup..."
+        
+        # Destroy infrastructure
+        echo "💥 Destroying infrastructure..."
+        cd dist/apps/infrastructure
+        cdk destroy --all --force --require-approval never
+        
+        # Clean up ECR repositories
+        echo "🐳 Cleaning up ECR repositories..."
+        aws ecr delete-repository --repository-name iagent-backend --force
+        aws ecr delete-repository --repository-name iagent-frontend --force
+        
+        echo "✅ Complete cleanup finished!"
+        
+    - name: 📋 Final Status
+      run: |
+        echo "📋 Cleanup operation completed!"
+        echo "🎯 Action performed: ${{ github.event.inputs.action }}"
+        echo "🌍 AWS Region: ${{ env.AWS_REGION }}"
+        echo "🏗️ Cluster: ${{ env.CLUSTER_NAME }}"

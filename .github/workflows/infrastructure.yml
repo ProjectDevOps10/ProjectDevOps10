@@ -1,0 +1,79 @@
+name: 🏗️ Infrastructure Deployment
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'apps/infrastructure/**'
+      - 'package.json'
+      - 'nx.json'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Infrastructure action'
+        required: true
+        default: 'deploy'
+        type: choice
+        options:
+          - deploy
+          - destroy
+
+env:
+  AWS_REGION: eu-central-1
+  NODE_VERSION: '18'
+
+jobs:
+  infrastructure:
+    name: 🏗️ Infrastructure Management
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔄 Sync Nx workspace
+        run: npx nx sync --yes
+
+      - name: 🔐 Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: 🏗️ Build infrastructure
+        run: npx nx build infrastructure
+
+      - name: 🚀 Deploy Infrastructure
+        if: github.event.inputs.action == 'deploy' || github.event.inputs.action == null
+        run: |
+          echo "🚀 Deploying infrastructure..."
+          cd dist/apps/infrastructure
+          cdk deploy --all --require-approval never
+          echo "✅ Infrastructure deployed successfully!"
+
+      - name: 💥 Destroy Infrastructure
+        if: github.event.inputs.action == 'destroy'
+        run: |
+          echo "💥 Destroying infrastructure..."
+          cd dist/apps/infrastructure
+          cdk destroy --all --force --require-approval never
+          echo "✅ Infrastructure destroyed successfully!"
+
+      - name: 📊 Infrastructure Status
+        run: |
+          echo "📊 Checking infrastructure status..."
+          cd dist/apps/infrastructure
+          cdk list
+          echo "✅ Infrastructure status check completed!"

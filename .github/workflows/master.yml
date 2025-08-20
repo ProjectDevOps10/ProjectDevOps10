@@ -1,0 +1,53 @@
+name: 🎯 Master CI/CD Orchestration
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: eu-central-1
+  CLUSTER_NAME: iagent-cluster
+
+jobs:
+  # Orchestrate all workflows
+  orchestrate:
+    name: 🎯 Orchestrate CI/CD
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🔧 Setup Node.js 18
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: 📦 Install dependencies
+      run: npm ci
+      
+    - name: 🔄 Sync Nx workspace
+      run: npx nx sync --yes
+      
+    - name: 🧪 Run quick tests
+      run: |
+        echo "🧪 Running quick tests..."
+        npx nx run-many --target=test --projects=frontend,backend --parallel=2
+        echo "✅ Quick tests passed"
+        
+    - name: 🏗️ Quick build check
+      run: |
+        echo "🏗️ Quick build check..."
+        npx nx run-many --target=build --projects=frontend,backend --parallel=2
+        echo "✅ Build check passed"
+        
+    - name: 🎉 All checks passed
+      run: |
+        echo "🎉 All CI/CD checks passed!"
+        echo "🚀 Ready for deployment"
+        echo "📊 Frontend will deploy to GitHub Pages"
+        echo "🐳 Backend will deploy to AWS EKS"
+        echo "🏗️ Infrastructure ready for deployment"

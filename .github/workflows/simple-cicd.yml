@@ -1,55 +1,77 @@
-name: Simple CI/CD
+name: 🚀 Complete CI/CD Pipeline
 
 on:
   push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 env:
   AWS_REGION: eu-central-1
   CLUSTER_NAME: iagent-cluster
+  ECR_BACKEND: iagent-backend
+  ECR_FRONTEND: iagent-frontend
 
 jobs:
-  # Simple Build & Test
+  # Phase 1: Build & Test
   build-and-test:
-    name: 🚀 Build & Test
+    name: 🧪 Build & Test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     
     steps:
     - name: 📥 Checkout code
       uses: actions/checkout@v4
       
-    - name: 🔧 Setup Node.js
+    - name: 🔧 Setup Node.js 18
       uses: actions/setup-node@v4
       with:
         node-version: '18'
         cache: 'npm'
         
     - name: 📦 Install dependencies
-      run: npm ci
-      
-    - name: 🔄 Sync Nx
-      run: npx nx sync --yes
-      
+      run: |
+        npm ci
+        echo "✅ Dependencies installed"
+        
+    - name: 🔄 Sync Nx workspace
+      run: |
+        npx nx sync --yes
+        echo "✅ Nx workspace synced"
+        
     - name: 🧪 Run tests
-      run: npx nx run-many --target=test --projects=frontend,backend --yes
-      
-    - name: 🏗️ Build apps
-      run: npx nx run-many --target=build --projects=frontend,backend --yes
+      run: |
+        echo "🧪 Running tests..."
+        npx nx run-many --target=test --projects=frontend,backend --parallel=2
+        echo "✅ All tests passed"
+        
+    - name: 🏗️ Build applications
+      run: |
+        echo "🏗️ Building applications..."
+        npx nx run-many --target=build --projects=frontend,backend --parallel=2
+        echo "✅ All applications built"
+        
+    - name: 📦 Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts
+        path: dist/
+        retention-days: 7
 
-  # Simple Deploy (only on main)
-  deploy:
-    name: 🚀 Deploy
+  # Phase 2: Build & Push Docker Images
+  build-and-push-images:
+    name: 🐳 Build & Push Images
     runs-on: ubuntu-latest
     needs: build-and-test
     if: github.ref == 'refs/heads/main'
+    timeout-minutes: 30
     
     steps:
     - name: 📥 Checkout code
       uses: actions/checkout@v4
       
-    - name: 🔧 Setup Node.js
+    - name: 🔧 Setup Node.js 18
       uses: actions/setup-node@v4
       with:
         node-version: '18'
@@ -58,38 +80,114 @@ jobs:
     - name: 📦 Install dependencies
       run: npm ci
       
-    - name: 🔐 Configure AWS
+    - name: 🔄 Sync Nx workspace
+      run: npx nx sync --yes
+      
+    - name: 🏗️ Build applications
+      run: npx nx run-many --target=build --projects=frontend,backend --parallel=2
+      
+    - name: 🔐 Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
         
-    - name: 🐳 Login to ECR
+    - name: 🐳 Login to Amazon ECR
+      id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
       
-    - name: 🏗️ Build & Push Images
+    - name: 🏗️ Build and push backend image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        # Build and push backend
-        docker build -t $ECR_REGISTRY/iagent-backend:$IMAGE_TAG -f apps/backend/Dockerfile .
-        docker push $ECR_REGISTRY/iagent-backend:$IMAGE_TAG
+        echo "🏗️ Building backend Docker image..."
+        docker build -t $ECR_REGISTRY/$ECR_BACKEND:$IMAGE_TAG -f apps/backend/Dockerfile .
+        docker tag $ECR_REGISTRY/$ECR_BACKEND:$IMAGE_TAG $ECR_REGISTRY/$ECR_BACKEND:latest
         
-        # Build and push frontend
-        docker build -t $ECR_REGISTRY/iagent-frontend:$IMAGE_TAG -f apps/frontend/Dockerfile .
-        docker push $ECR_REGISTRY/iagent-frontend:$IMAGE_TAG
+        echo "📤 Pushing backend image..."
+        docker push $ECR_REGISTRY/$ECR_BACKEND:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_BACKEND:latest
         
-    - name: 🚀 Deploy to EKS
+        echo "✅ Backend image pushed successfully!"
+        
+    - name: 🏗️ Build and push frontend image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        echo "🏗️ Building frontend Docker image..."
+        docker build -t $ECR_REGISTRY/$ECR_FRONTEND:$IMAGE_TAG -f apps/frontend/Dockerfile .
+        docker tag $ECR_REGISTRY/$ECR_FRONTEND:$IMAGE_TAG $ECR_REGISTRY/$ECR_FRONTEND:latest
+        
+        echo "📤 Pushing frontend image..."
+        docker push $ECR_REGISTRY/$ECR_FRONTEND:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_FRONTEND:latest
+        
+        echo "✅ Frontend image pushed successfully!"
+
+  # Phase 3: Deploy to AWS
+  deploy-to-aws:
+    name: 🚀 Deploy to AWS
+    runs-on: ubuntu-latest
+    needs: build-and-push-images
+    if: github.ref == 'refs/heads/main'
+    timeout-minutes: 20
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🔐 Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+        
+    - name: 🔧 Update kubeconfig
       run: |
         aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
+        echo "✅ Kubeconfig updated"
+        
+    - name: 🚀 Deploy to Kubernetes
+      env:
+        ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        echo "🚀 Deploying to Kubernetes..."
+        
+        # Apply namespace
         kubectl apply -f apps/infrastructure/src/k8s/namespace.yaml
-        kubectl set image deployment/iagent-backend iagent-backend=${{ steps.login-ecr.outputs.registry }}/iagent-backend:${{ github.sha }} -n iagent
+        
+        # Apply secrets if they exist
+        if [ -f "apps/infrastructure/src/k8s/secrets.yaml" ]; then
+          kubectl apply -f apps/infrastructure/src/k8s/secrets.yaml
+        fi
+        
+        # Update deployment with new image
+        kubectl set image deployment/iagent-backend iagent-backend=$ECR_REGISTRY/$ECR_BACKEND:$IMAGE_TAG -n iagent
+        
+        # Wait for rollout
         kubectl rollout status deployment/iagent-backend -n iagent --timeout=300s
         
-    - name: ✅ Success
+        echo "✅ Backend deployed successfully!"
+        
+    - name: 📊 Verify deployment
+      run: |
+        echo "📋 Pod Status:"
+        kubectl get pods -n iagent
+        
+        echo "🌐 Service Status:"
+        kubectl get svc -n iagent
+        
+        echo "📈 Deployment Status:"
+        kubectl get deployment iagent-backend -n iagent
+        
+    - name: 🎉 Success notification
       run: |
         echo "🚀 Deployment completed successfully!"
-        echo "📊 Backend deployed to EKS"
-        echo "🐳 Images pushed to ECR"
+        echo "📊 Application deployed to EKS cluster: ${{ env.CLUSTER_NAME }}"
+        echo "🐳 Images pushed to ECR with tag: ${{ github.sha }}"
+        echo "🌐 Backend available in namespace: iagent"

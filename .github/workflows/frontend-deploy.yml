@@ -1,0 +1,78 @@
+name: 🎨 Frontend Deployment
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'apps/frontend/**'
+      - 'libs/**'
+      - 'package.json'
+      - 'nx.json'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  build-and-deploy:
+    name: 🚀 Build & Deploy Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    
+
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔍 Cache Nx computation cache
+        uses: actions/cache@v4
+        with:
+          path: .nx/cache
+          key: nx-frontend-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            nx-frontend-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-
+            nx-frontend-${{ runner.os }}-
+
+      - name: 🔄 Sync Nx workspace
+        run: npx nx sync --yes
+
+      - name: 🧪 Run tests
+        run: npx nx test frontend
+
+      - name: 🏗️ Build Frontend for Production
+        run: npx nx build frontend --configuration=production
+
+      - name: 🔧 Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: 📤 Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist/apps/frontend'
+
+      - name: 🚀 Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: 📢 Deployment Status
+        run: |
+          echo "✅ Frontend deployed successfully!"
+          echo "🌐 URL: ${{ steps.deployment.outputs.page_url }}"
+          echo "📝 Commit: ${{ github.sha }}"
+          echo "🏷️ Branch: ${{ github.ref_name }}"

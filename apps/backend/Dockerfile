@@ -13,11 +13,11 @@ COPY tsconfig*.json ./
 COPY apps/backend ./apps/backend
 COPY libs ./libs
 
-# Install dependencies
-RUN npm ci --only=production
+# Install ALL dependencies (including dev dependencies for build)
+RUN npm ci
 
 # Build the application
-RUN npm run build:backend
+RUN npx nx build backend
 
 # Production stage
 FROM node:18-alpine AS production

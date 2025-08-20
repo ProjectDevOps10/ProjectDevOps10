@@ -1,0 +1,77 @@
+name: 🧪 Development Workflow
+
+on:
+  push:
+    branches: [ develop, feature/*, hotfix/* ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # Development Testing
+  test-and-lint:
+    name: 🧪 Test & Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🔧 Setup Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: 📦 Install dependencies
+      run: npm ci
+      
+    - name: 🔄 Sync Nx workspace
+      run: npx nx sync --yes
+      
+    - name: 🧹 Run linting
+      run: |
+        echo "🧹 Running linting..."
+        npx nx run-many --target=lint --projects=frontend,backend --parallel=2
+        echo "✅ Linting completed"
+      
+    - name: 🧪 Run tests
+      run: |
+        echo "🧪 Running tests..."
+        npx nx run-many --target=test --projects=frontend,backend --parallel=2
+        echo "✅ All tests passed"
+        
+    - name: 🏗️ Build applications
+      run: |
+        echo "🏗️ Building applications..."
+        npx nx run-many --target=build --projects=frontend,backend --parallel=2
+        echo "✅ All applications built"
+
+  # Security Check (Optional)
+  security-check:
+    name: 🔒 Security Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🔧 Setup Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: 📦 Install dependencies
+      run: npm ci
+      
+    - name: 🔍 Run security audit
+      run: |
+        echo "🔍 Running security audit..."
+        npm audit --audit-level=high
+        echo "✅ Security audit completed"
