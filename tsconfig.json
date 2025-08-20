@@ -26,9 +26,6 @@
     },
     {
       "path": "./apps/monitoring"
-    },
-    {
-      "path": "./apps/cicd"
     }
   ]
 }

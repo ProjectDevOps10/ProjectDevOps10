@@ -1,0 +1,276 @@
+name: 🚀 iAgent DevOps Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      deploy_infrastructure:
+        description: 'Deploy infrastructure'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      teardown_infrastructure:
+        description: 'Teardown infrastructure (DANGER)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+env:
+  AWS_REGION: eu-central-1
+  EKS_CLUSTER_NAME: iagent-cluster
+  ECR_BACKEND_REPO: iagent-backend
+  ECR_FRONTEND_REPO: iagent-frontend
+  NODE_VERSION: '18'
+
+jobs:
+  # Job 1: Build and Test
+  build-and-test:
+    name: 🧪 Build & Test
+    runs-on: ubuntu-latest
+    if: github.event.inputs.teardown_infrastructure != 'true'
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 📦 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: 📦 Install dependencies
+      run: npm ci
+      
+    - name: 🧪 Run tests
+      run: npm test
+      
+    - name: 🔍 Run linting
+      run: npm run lint
+      
+    - name: 🏗️ Build applications
+      run: npm run build
+
+  # Job 2: Security Scan
+  security-scan:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.event.inputs.teardown_infrastructure != 'true'
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🔍 Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'table'
+        exit-code: '0' # Don't fail on vulnerabilities for now
+
+  # Job 3: Build and Push Docker Images
+  build-images:
+    name: 🐳 Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [build-and-test, security-scan]
+    if: github.ref == 'refs/heads/main' && github.event.inputs.teardown_infrastructure != 'true'
+    
+    outputs:
+      backend-image: ${{ steps.backend-image.outputs.image }}
+      frontend-image: ${{ steps.frontend-image.outputs.image }}
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: ⚙️ Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+        
+    - name: 🔐 Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+      
+    - name: 🏗️ Build backend image
+      id: backend-image
+      run: |
+        IMAGE_TAG=${GITHUB_SHA::8}
+        IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_BACKEND_REPO }}:$IMAGE_TAG
+        docker build -t $IMAGE_URI apps/backend/
+        docker push $IMAGE_URI
+        echo "image=$IMAGE_URI" >> $GITHUB_OUTPUT
+        
+    - name: 🏗️ Build frontend image
+      id: frontend-image
+      run: |
+        IMAGE_TAG=${GITHUB_SHA::8}
+        IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_FRONTEND_REPO }}:$IMAGE_TAG
+        docker build -t $IMAGE_URI apps/frontend/
+        docker push $IMAGE_URI
+        echo "image=$IMAGE_URI" >> $GITHUB_OUTPUT
+
+  # Job 4: Deploy to GitHub Pages
+  deploy-frontend:
+    name: 📄 Deploy Frontend to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event.inputs.teardown_infrastructure != 'true'
+    
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 📦 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: 📦 Install dependencies
+      run: npm ci
+      
+    - name: 🏗️ Build frontend
+      run: npm run build:frontend
+      env:
+        VITE_API_BASE_URL: https://api.your-domain.com
+        VITE_MOCK_MODE: false
+        
+    - name: 📄 Setup Pages
+      uses: actions/configure-pages@v4
+      
+    - name: 📦 Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: 'dist/apps/frontend'
+        
+    - name: 🚀 Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+
+  # Job 5: Deploy Infrastructure (Manual Trigger)
+  deploy-infrastructure:
+    name: 🏗️ Deploy Infrastructure
+    runs-on: ubuntu-latest
+    if: github.event.inputs.deploy_infrastructure == 'true'
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 📦 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: ⚙️ Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+        
+    - name: 📦 Install dependencies
+      run: npm ci
+      
+    - name: 🏗️ Deploy infrastructure
+      run: |
+        cd apps/infrastructure
+        npm install
+        npm run build
+        npx cdk deploy --require-approval never
+
+  # Job 6: Deploy to EKS
+  deploy-backend:
+    name: ☸️ Deploy Backend to EKS
+    runs-on: ubuntu-latest
+    needs: [build-images]
+    if: github.ref == 'refs/heads/main' && github.event.inputs.teardown_infrastructure != 'true'
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: ⚙️ Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+        
+    - name: ⚙️ Setup kubectl
+      run: |
+        aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+        
+    - name: 🚀 Deploy to EKS
+      run: |
+        # Update deployment with new image
+        sed -i "s|IMAGE_PLACEHOLDER|${{ needs.build-images.outputs.backend-image }}|g" apps/infrastructure/src/k8s/backend-deployment.yaml
+        kubectl apply -f apps/infrastructure/src/k8s/ -n iagent
+        kubectl rollout status deployment/backend -n iagent --timeout=300s
+
+  # Job 7: Teardown Infrastructure (DANGER)
+  teardown-infrastructure:
+    name: 🗑️ Teardown Infrastructure
+    runs-on: ubuntu-latest
+    if: github.event.inputs.teardown_infrastructure == 'true'
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: ⚠️ Confirmation
+      run: |
+        echo "🚨 WARNING: This will delete ALL infrastructure!"
+        echo "This action will:"
+        echo "  - Delete EKS cluster"
+        echo "  - Delete ECR repositories"
+        echo "  - Delete VPC and networking"
+        echo "  - Delete CloudWatch resources"
+        echo "💰 This will stop all AWS charges for this project"
+        
+    - name: 📦 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: ⚙️ Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+        
+    - name: 📦 Install dependencies
+      run: npm ci
+      
+    - name: 🗑️ Destroy infrastructure
+      run: |
+        cd apps/infrastructure
+        npm install
+        npm run build
+        npx cdk destroy --force
