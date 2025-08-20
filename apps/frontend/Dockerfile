@@ -16,6 +16,9 @@ COPY libs ./libs
 # Install dependencies
 RUN npm ci
 
+# Sync Nx workspace
+RUN npx nx sync --yes
+
 # Build the application
 RUN npx nx build frontend
 

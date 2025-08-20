@@ -36,6 +36,7 @@ The project uses a **hybrid approach** combining:
 ## 🎨 Design Tokens
 
 ### Typography
+{% raw %}
 ```typescript
 typography: {
   fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
@@ -54,8 +55,10 @@ typography: {
   lineHeight: 1.7,   // Generous for readability
 }
 ```
+{% endraw %}
 
 ### Spacing System
+{% raw %}
 ```typescript
 spacing: {
   xs: '4px',        // Tight spacing
@@ -66,8 +69,10 @@ spacing: {
   '2xl': '48px',    // Component separation
 }
 ```
+{% endraw %}
 
 ### Border Radius
+{% raw %}
 ```typescript
 borderRadius: {
   sm: '6px',        // Small elements
@@ -78,8 +83,10 @@ borderRadius: {
   '3xl': '32px',    // Modal dialogs
 }
 ```
+{% endraw %}
 
 ### Animation
+{% raw %}
 ```typescript
 animation: {
   duration: {
@@ -90,12 +97,14 @@ animation: {
   easing: 'cubic-bezier(0.4, 0, 0.2, 1)', // Material Design easing
 }
 ```
+{% endraw %}
 
 ---
 
 ## 🌈 Color System
 
 ### Light Theme
+{% raw %}
 ```typescript
 colors: {
   light: {
@@ -115,8 +124,10 @@ colors: {
   }
 }
 ```
+{% endraw %}
 
 ### Dark Theme
+{% raw %}
 ```typescript
 colors: {
   dark: {
@@ -136,8 +147,10 @@ colors: {
   }
 }
 ```
+{% endraw %}
 
 ### Semantic Colors
+{% raw %}
 ```typescript
 semantic: {
   success: { light: '#10b981', dark: '#34d399' },
@@ -146,12 +159,14 @@ semantic: {
   info: { light: '#3b82f6', dark: '#60a5fa' },
 }
 ```
+{% endraw %}
 
 ---
 
 ## 🧩 Component Patterns
 
 ### Button Styling
+{% raw %}
 ```typescript
 // Standard Button Pattern
 <Button
@@ -176,8 +191,10 @@ semantic: {
   Button Text
 </Button>
 ```
+{% endraw %}
 
 ### Card/Container Pattern
+{% raw %}
 ```typescript
 <Card
   sx={{
@@ -196,8 +213,10 @@ semantic: {
   </CardContent>
 </Card>
 ```
+{% endraw %}
 
 ### Input Field Pattern
+{% raw %}
 ```typescript
 <TextField
   variant="outlined"
@@ -225,8 +244,10 @@ semantic: {
   }}
 />
 ```
+{% endraw %}
 
 ### Dialog/Modal Pattern
+{% raw %}
 ```typescript
 <Dialog
   open={open}
@@ -252,6 +273,7 @@ semantic: {
   </DialogActions>
 </Dialog>
 ```
+{% endraw %}
 
 ---
 
@@ -266,6 +288,7 @@ The project includes Tailwind CSS for utility-first styling alongside Material-U
 3. **Combine Both**: Use MUI components with Tailwind utility classes
 
 ### Example Integration
+{% raw %}
 ```jsx
 <Box className="flex flex-col gap-4 p-6 md:flex-row md:gap-6">
   <Button
@@ -277,12 +300,14 @@ The project includes Tailwind CSS for utility-first styling alongside Material-U
   </Button>
 </Box>
 ```
+{% endraw %}
 
 ---
 
 ## 📱 Responsive Design
 
 ### Breakpoints
+{% raw %}
 ```typescript
 breakpoints: {
   xs: '0px',      // Mobile
@@ -292,8 +317,10 @@ breakpoints: {
   xl: '1536px',   // Large desktop
 }
 ```
+{% endraw %}
 
 ### Mobile-First Approach
+{% raw %}
 ```typescript
 // Always start with mobile styles, then enhance
 sx={{
@@ -314,12 +341,14 @@ sx={{
   },
 }}
 ```
+{% endraw %}
 
 ---
 
 ## 🌍 Internationalization (i18n)
 
 ### RTL Support
+{% raw %}
 ```typescript
 // RTL-aware styling
 sx={{
@@ -333,18 +362,20 @@ sx={{
   },
 }}
 ```
+{% endraw %}
 
 ### Language-Specific Styling
+{% raw %}
 ```typescript
 // Different fonts for different languages
 sx={{
   fontFamily: currentLang === 'ar' 
     ? 'Amiri, serif'
-    : currentLang === 'he'
-    ? 'Assistant, sans-serif'
+    : 'Assistant, sans-serif'
     : 'system-ui, sans-serif',
 }}
 ```
+{% endraw %}
 
 ---
 
@@ -360,6 +391,7 @@ sx={{
 6. **TypeScript**: Provide comprehensive type definitions
 
 ### Example Component Template
+{% raw %}
 ```typescript
 import React from 'react';
 import { Box, Typography, useTheme } from '@mui/material';
@@ -414,6 +446,7 @@ export const MyComponent: React.FC<MyComponentProps> = ({
   );
 };
 ```
+{% endraw %}
 
 ---
 
@@ -438,6 +471,7 @@ export const MyComponent: React.FC<MyComponentProps> = ({
 ### For Component Generation
 When asking AI to generate components, use this prompt template:
 
+{% raw %}
 ```
 Create a React component following the iAgent style guide:
 - Use Material-UI with the custom design tokens
@@ -452,8 +486,10 @@ Create a React component following the iAgent style guide:
 - Use semantic colors for status indicators
 - Support RTL languages where applicable
 ```
+{% endraw %}
 
 ### Color Reference for AI
+{% raw %}
 ```
 Light theme colors:
 - Background: #ffffff, #f8f9fa, #f1f3f5
@@ -467,6 +503,7 @@ Dark theme colors:
 - Accent: #60a5fa
 - Border: #444444
 ```
+{% endraw %}
 
 ---
 
