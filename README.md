@@ -117,10 +117,33 @@ curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo ba
 ./.devcontainer/setup-github-actions.sh
 ```
 
-## 🔄 CI/CD Pipeline
+## 🔄 CI/CD Pipeline - Temporary Setup (Build → Deploy → Clean Up)
+
+### 🎯 **Your 3-Phase CI/CD Workflow:**
+
+**Phase 1: 🚀 Setup & Deploy**
+- Setup AWS environment and roles
+- Deploy infrastructure to AWS
+- Enable CI/CD workflows
+- Frontend deploys to GitHub Pages
+- Backend deploys to EKS
+
+**Phase 2: 🔄 Development & CI/CD**
+- Make changes and push to main
+- GitHub Actions automatically:
+  - Build and test your code
+  - Deploy frontend to GitHub Pages
+  - Deploy backend to EKS
+  - Update infrastructure if needed
+
+**Phase 3: 🧹 Complete Cleanup**
+- Disable all GitHub Actions workflows
+- Delete all AWS services and infrastructure
+- Remove GitHub Pages deployment
+- **Result: Zero charges, clean slate**
 
 ### Workflow Overview
-- **ESSENTIAL Workflows** (required for basic operation):
+- **ACTIVE Workflows** (for your temporary deployment):
   - `ci-cd.yml` - Main build and deployment pipeline
   - `frontend-ci-cd.yml` - Frontend build and GitHub Pages deployment
   - `backend-ci-cd.yml` - Backend build and EKS deployment
@@ -129,6 +152,49 @@ curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo ba
 - **DISABLED Workflows** (commented out to simplify setup):
   - `master-ci-cd.yml` - Orchestrates all workflows (disabled)
   - `monitoring-ci-cd.yml` - Monitoring and observability services (disabled)
+
+### 🚀 **Complete CI/CD Workflow (3 Steps):**
+
+#### **Step 1: Environment Setup & AWS Configuration**
+```bash
+# 1. Setup AWS environment
+./setup-aws-environment.sh
+
+# 2. Add GitHub repository secrets:
+#    Go to: Settings → Secrets and variables → Actions
+#    Add: AWS_ACCOUNT_ID, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+
+# 3. Verify setup
+aws sts get-caller-identity
+```
+
+#### **Step 2: Trigger CI/CD Pipeline**
+```bash
+# Push changes to trigger all workflows
+git add .
+git commit -m "Trigger CI/CD pipeline"
+git push origin main
+
+# What happens automatically:
+# ✅ Infrastructure deploys to AWS (EKS, ECR, VPC, etc.)
+# ✅ Backend builds and deploys to EKS
+# ✅ Frontend builds and deploys to GitHub Pages
+# ✅ All services become available online
+```
+
+#### **Step 3: Cleanup & Teardown (When Done)**
+```bash
+# 1. Disable all GitHub Actions workflows
+#    Comment out all workflow files in .github/workflows/
+
+# 2. Delete AWS infrastructure
+./teardown-infrastructure.sh
+
+# 3. Remove GitHub Pages deployment
+#    Go to: Settings → Pages → Source → None
+
+# 4. Result: Zero charges, clean slate
+```
 
 ### Local Testing
 ```bash
@@ -144,20 +210,30 @@ If you need the master orchestration or monitoring workflows:
 2. Remove the `# DISABLED:` comments
 3. The workflow will automatically become active again
 
-### Trigger CI/CD
+### 🔧 **Quick Commands Reference:**
+
+#### **Setup & Deploy:**
 ```bash
-# 1. Add required GitHub secrets:
-#    Go to: Settings → Secrets and variables → Actions
-#    Add: AWS_ACCOUNT_ID, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
-
-# 2. Push to trigger workflows:
-git add .
-git commit -m "Your changes"
-git push origin main
-
-# 3. Monitor workflows:
-#    Go to: Actions tab in GitHub repository
+# Complete setup and deployment
+./setup-aws-environment.sh                    # Setup AWS
+git push origin main                          # Trigger CI/CD
+# Wait for completion, then access your deployed services
 ```
+
+#### **Cleanup & Teardown:**
+```bash
+# Complete cleanup (when done testing)
+./teardown-infrastructure.sh                  # Delete AWS resources
+# Comment out all .github/workflows/*.yml files
+# Disable GitHub Pages in repository settings
+# Result: Zero charges, clean slate
+```
+
+### 📊 **Monitor Your Deployment:**
+- **GitHub Actions:** Check workflow progress in Actions tab
+- **Frontend:** Available at your GitHub Pages URL
+- **Backend:** Available at your EKS cluster endpoint
+- **AWS Console:** Monitor resources in AWS console
 
 ### Required GitHub Secrets
 | Secret | Description | How to get |
@@ -310,6 +386,41 @@ npx nx g @nx/react:app my-app
 ## 📄 License
 
 MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🧹 **Cleanup & Teardown Scripts**
+
+### **Complete Cleanup Process:**
+
+When you're done testing your CI/CD pipeline, use these scripts to clean up everything:
+
+```bash
+# 1. Delete all AWS infrastructure (prevents charges)
+./teardown-infrastructure.sh
+
+# 2. Disable GitHub Actions workflows
+#    Comment out all files in .github/workflows/
+
+# 3. Remove GitHub Pages deployment
+#    Go to: Settings → Pages → Source → None
+
+# 4. Verify cleanup
+aws sts get-caller-identity  # Should still work
+aws eks list-clusters        # Should show no clusters
+aws ecr describe-repositories  # Should show no repos
+```
+
+### **What Gets Cleaned Up:**
+- ✅ **EKS Cluster** - Kubernetes cluster
+- ✅ **ECR Repositories** - Docker image storage
+- ✅ **VPC & Subnets** - Network infrastructure
+- ✅ **Security Groups** - Firewall rules
+- ✅ **IAM Roles** - AWS permissions
+- ✅ **CloudWatch Logs** - Application logs
+- ✅ **GitHub Pages** - Frontend hosting
+- ✅ **GitHub Actions** - CI/CD workflows
+
+### **Result:**
+🎯 **Zero AWS charges, clean GitHub repository, ready for next project!**
 
 ## 🔗 Links
 
