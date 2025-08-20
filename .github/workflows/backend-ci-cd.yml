@@ -1,3 +1,6 @@
+# ESSENTIAL: Backend CI/CD - Builds and deploys the backend application
+# This workflow is required for basic project operation
+# It handles building, testing, and deploying the backend to EKS
 name: Backend CI/CD
 
 on:

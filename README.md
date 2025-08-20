@@ -38,6 +38,8 @@ iAgent/
 
 - Node.js >= 18.0.0
 - npm >= 8.0.0
+- Docker (for containerized development)
+- AWS CLI (for infrastructure deployment)
 
 ### Installation & Development
 
@@ -94,6 +96,69 @@ npx nx affected:test            # Test affected projects
 npm run dev:frontend     # Alternative to npx nx serve @iagent/frontend
 npm run dev:backend      # Alternative to npx nx serve @iagent/backend
 ```
+
+## 🐳 Development Container Setup
+
+### Option 1: VS Code Dev Container (Recommended)
+```bash
+# 1. Open in VS Code
+# 2. Install "Dev Containers" extension
+# 3. When prompted, click "Reopen in Container"
+# 4. Wait for container to build (includes all tools)
+```
+
+### Option 2: Manual Setup
+```bash
+# Install required tools
+npm install -g aws-cdk
+curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
+
+# Setup GitHub Actions local testing
+./.devcontainer/setup-github-actions.sh
+```
+
+## 🔄 CI/CD Pipeline
+
+### Workflow Overview
+- **ESSENTIAL Workflows** (required for basic operation):
+  - `ci-cd.yml` - Main build and deployment pipeline
+  - `frontend-ci-cd.yml` - Frontend build and GitHub Pages deployment
+  - `backend-ci-cd.yml` - Backend build and EKS deployment
+  - `infrastructure-ci-cd.yml` - AWS infrastructure deployment
+
+- **OPTIONAL Workflows** (can be disabled if not needed):
+  - `master-ci-cd.yml` - Orchestrates all workflows
+  - `monitoring-ci-cd.yml` - Monitoring and observability services
+
+### Local Testing
+```bash
+# Test workflows locally before pushing
+act -W .github/workflows/frontend-ci-cd.yml --job build-and-test --dryrun --bind
+act -W .github/workflows/backend-ci-cd.yml --job build-and-test --dryrun --bind
+act -W .github/workflows/infrastructure-ci-cd.yml --job build-and-test --dryrun --bind
+```
+
+### Trigger CI/CD
+```bash
+# 1. Add required GitHub secrets:
+#    Go to: Settings → Secrets and variables → Actions
+#    Add: AWS_ACCOUNT_ID, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+
+# 2. Push to trigger workflows:
+git add .
+git commit -m "Your changes"
+git push origin main
+
+# 3. Monitor workflows:
+#    Go to: Actions tab in GitHub repository
+```
+
+### Required GitHub Secrets
+| Secret | Description | How to get |
+|--------|-------------|------------|
+| `AWS_ACCOUNT_ID` | Your AWS account ID | `aws sts get-caller-identity --query Account --output text` |
+| `AWS_ACCESS_KEY_ID` | AWS access key | `aws configure get aws_access_key_id` |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key | `aws configure get aws_secret_access_key` |
 
 ## 🛠️ Tech Stack
 

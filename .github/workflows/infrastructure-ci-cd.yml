@@ -1,3 +1,6 @@
+# ESSENTIAL: Infrastructure CI/CD - Deploys AWS infrastructure using CDK
+# This workflow is required for basic project operation
+# It handles building, testing, and deploying the AWS infrastructure stack
 name: Infrastructure CI/CD
 
 on:

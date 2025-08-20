@@ -1,3 +1,6 @@
+# ESSENTIAL: Frontend CI/CD - Builds and deploys the frontend application
+# This workflow is required for basic project operation
+# It handles building, testing, and deploying the frontend to GitHub Pages
 name: Frontend CI/CD
 
 on:

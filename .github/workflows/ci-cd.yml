@@ -1,3 +1,6 @@
+# ESSENTIAL: Main CI/CD Pipeline - Core build and deployment workflow
+# This workflow is required for basic project operation
+# It handles building, testing, and deploying the main applications
 name: CI/CD Pipeline
 
 on:
