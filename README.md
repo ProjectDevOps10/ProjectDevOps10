@@ -126,9 +126,9 @@ curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo ba
   - `backend-ci-cd.yml` - Backend build and EKS deployment
   - `infrastructure-ci-cd.yml` - AWS infrastructure deployment
 
-- **OPTIONAL Workflows** (can be disabled if not needed):
-  - `master-ci-cd.yml` - Orchestrates all workflows
-  - `monitoring-ci-cd.yml` - Monitoring and observability services
+- **DISABLED Workflows** (commented out to simplify setup):
+  - `master-ci-cd.yml` - Orchestrates all workflows (disabled)
+  - `monitoring-ci-cd.yml` - Monitoring and observability services (disabled)
 
 ### Local Testing
 ```bash
@@ -137,6 +137,12 @@ act -W .github/workflows/frontend-ci-cd.yml --job build-and-test --dryrun --bind
 act -W .github/workflows/backend-ci-cd.yml --job build-and-test --dryrun --bind
 act -W .github/workflows/infrastructure-ci-cd.yml --job build-and-test --dryrun --bind
 ```
+
+### Re-enabling Optional Workflows
+If you need the master orchestration or monitoring workflows:
+1. Uncomment the desired workflow file in `.github/workflows/`
+2. Remove the `# DISABLED:` comments
+3. The workflow will automatically become active again
 
 ### Trigger CI/CD
 ```bash
