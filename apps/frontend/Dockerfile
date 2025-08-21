@@ -19,8 +19,8 @@ RUN npm ci
 # Sync Nx workspace
 RUN npx nx sync --yes
 
-# Build the application
-RUN npx nx build frontend
+# Build the application (disable daemon for Docker builds)
+RUN NX_DAEMON=false npx nx build frontend
 
 # Production stage with nginx
 FROM nginx:alpine AS production
