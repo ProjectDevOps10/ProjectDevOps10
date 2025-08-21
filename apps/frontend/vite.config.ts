@@ -35,7 +35,7 @@ export default defineConfig({
   },
 
   // GitHub Pages deployment configuration
-  base: '/iAgent/',
+  base: '/ProjectDevOps10/',
 
   build: {
     outDir: '../../dist/apps/frontend',

@@ -39,7 +39,7 @@ fi
 
 # Deploy to GitHub Pages
 echo "🌐 Deploying to GitHub Pages..."
-gh-pages -d dist/apps/frontend -m "Deploy $(date)"
+gh-pages -d dist/apps/frontend -m "Deploy $(date)" --repo https://github.com/ProjectDevOps10/ProjectDevOps10.git
 
 echo "✅ Deployment complete!"
 echo "🔗 Your site will be available at: https://$(git config user.name).github.io/$(basename $(git rev-parse --show-toplevel))/"
