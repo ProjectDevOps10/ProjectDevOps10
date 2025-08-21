@@ -62,8 +62,8 @@ jobs:
         echo "2. Set Source to 'GitHub Actions'"
         echo "3. Save the configuration"
         echo ""
-        echo "🔗 Repository URL: https://github.com/ProjectDevOps10/ProjectDevOps10"
-        echo "📄 Settings URL: https://github.com/ProjectDevOps10/ProjectDevOps10/settings/pages"
+        echo "🔗 Repository URL: https://github.com/ProjectDevOps10/iAgent"
+        echo "📄 Settings URL: https://github.com/ProjectDevOps10/iAgent/settings/pages"
         echo ""
         echo "✅ After setup, frontend deployments will work automatically!"
         
