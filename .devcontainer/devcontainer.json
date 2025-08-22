@@ -12,6 +12,7 @@
   "forwardPorts": [3000, 4200],
   
   "postCreateCommand": "npm install && npm install -g aws-cdk && curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash && sudo mv bin/act /usr/local/bin/ 2>/dev/null || true",
+  "postStartCommand": "bash .devcontainer/startup.sh",
   
   "customizations": {
     "vscode": {
@@ -27,6 +28,9 @@
   },
   
   "containerEnv": {
+    "AWS_DEFAULT_REGION": "eu-central-1"
+  },
+  "remoteEnv": {
     "AWS_DEFAULT_REGION": "eu-central-1"
   }
 }
