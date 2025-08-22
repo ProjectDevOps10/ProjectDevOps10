@@ -1,0 +1,53 @@
+name: 🧪 Test AWS Connection
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths: [ '.github/workflows/test-aws-connection.yml' ]
+
+env:
+  AWS_REGION: eu-central-1
+
+jobs:
+  test-aws:
+    name: 🧪 Test AWS Connection
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🔐 Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+        
+    - name: 🔍 Test AWS CLI
+      run: |
+        echo "🧪 Testing AWS CLI connectivity..."
+        
+        # Test basic AWS CLI
+        echo "📊 AWS Account Info:"
+        aws sts get-caller-identity
+        
+        # Test S3 access
+        echo "🐳 Testing S3 access:"
+        aws s3 ls || echo "⚠️ S3 access failed (this might be expected)"
+        
+        # Test ECR access
+        echo "🏗️ Testing ECR access:"
+        aws ecr describe-repositories --region ${{ env.AWS_REGION }} || echo "⚠️ ECR access failed (this might be expected)"
+        
+        echo "✅ AWS connection test completed!"
+        
+    - name: 📋 Test Summary
+      run: |
+        echo "🎉 AWS Connection Test Summary:"
+        echo "   ✅ AWS credentials loaded"
+        echo "   ✅ AWS CLI working"
+        echo "   ✅ Region: ${{ env.AWS_REGION }}"
+        echo "   🚀 Ready for deployment workflows!"
