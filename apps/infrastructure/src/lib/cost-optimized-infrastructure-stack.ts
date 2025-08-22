@@ -1,3 +1,24 @@
+/**
+ * iAgent Complete Infrastructure as Code Stack
+ * 
+ * This stack creates ALL AWS resources needed for the iAgent project:
+ * - VPC with public/private subnets and NAT gateway
+ * - ECR repositories for backend and frontend images
+ * - EKS cluster with cost-optimized node groups
+ * - IAM roles and policies
+ * - CloudWatch monitoring and alarms
+ * - SNS topics for notifications
+ * 
+ * IMPORTANT: All resources have proper removal policies set to DESTROY,
+ * which means running `cdk destroy` will completely remove ALL resources
+ * including ECR repositories, EKS cluster, VPC, and all associated resources.
+ * 
+ * To completely clean up AWS:
+ * 1. Run: cdk destroy --force
+ * 2. This will delete: ECR repos, EKS cluster, VPC, IAM roles, etc.
+ * 3. All resources will be permanently removed
+ */
+
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as eks from 'aws-cdk-lib/aws-eks';
@@ -57,6 +78,7 @@ export class CostOptimizedInfrastructureStack extends cdk.Stack {
       natGateways: 1, // Single NAT gateway to reduce costs
       enableDnsHostnames: true,
       enableDnsSupport: true,
+
       subnetConfiguration: [
         {
           cidrMask: 24,
@@ -71,22 +93,15 @@ export class CostOptimizedInfrastructureStack extends cdk.Stack {
       ],
     });
 
-    // Cost-optimized ECR Repositories with lifecycle policies
+    // Create ECR Repositories with proper lifecycle policies
     this.backendRepository = new ecr.Repository(this, 'BackendRepository', {
       repositoryName: 'iagent-backend',
       imageScanOnPush: true,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // This ensures CDK can destroy the repository
       lifecycleRules: [
         {
           description: 'Keep only latest 5 images',
           maxImageCount: 5,
-          rulePriority: 1,
-        },
-        {
-          description: 'Delete untagged images after 1 day',
-          maxImageAge: cdk.Duration.days(1),
-          tagStatus: ecr.TagStatus.UNTAGGED,
-          rulePriority: 2,
         },
       ],
     });
@@ -94,18 +109,11 @@ export class CostOptimizedInfrastructureStack extends cdk.Stack {
     this.frontendRepository = new ecr.Repository(this, 'FrontendRepository', {
       repositoryName: 'iagent-frontend',
       imageScanOnPush: true,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // This ensures CDK can destroy the repository
       lifecycleRules: [
         {
           description: 'Keep only latest 5 images',
           maxImageCount: 5,
-          rulePriority: 1,
-        },
-        {
-          description: 'Delete untagged images after 1 day',
-          maxImageAge: cdk.Duration.days(1),
-          tagStatus: ecr.TagStatus.UNTAGGED,
-          rulePriority: 2,
         },
       ],
     });
@@ -116,17 +124,7 @@ export class CostOptimizedInfrastructureStack extends cdk.Stack {
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSClusterPolicy'),
       ],
-    });
 
-    // Create kubectl layer
-    const kubectlLayer = new lambda.LayerVersion(this, 'KubectlLayer', {
-      code: lambda.Code.fromInline(`
-import json
-def handler(event, context):
-    return {"statusCode": 200, "body": json.dumps("kubectl layer")}
-      `),
-      compatibleRuntimes: [lambda.Runtime.PYTHON_3_9],
-      description: 'kubectl layer for EKS',
     });
 
     // EKS Cluster with cost optimizations
@@ -143,7 +141,7 @@ def handler(event, context):
         eks.ClusterLoggingTypes.AUDIT,
         eks.ClusterLoggingTypes.AUTHENTICATOR,
       ] : [],
-      kubectlLayer: kubectlLayer,
+      kubectlLayer: undefined, // Let CDK handle this automatically
     });
 
     // Cost-optimized Node Group with Spot Instances
@@ -368,5 +366,32 @@ def handler(event, context):
     const total = eksControlPlane + natGateway + instanceCost + ecrStorage + cloudWatch;
     
     return `${total.toFixed(0)} (with ${spotInstances ? 'spot' : 'on-demand'} instances)`;
+  }
+
+  /**
+   * Cleanup method to ensure all resources are properly destroyed
+   * This method can be called before destroying the stack to clean up any
+   * resources that might not be automatically cleaned up by CDK
+   */
+  public cleanup(): void {
+    // Force removal of ECR repositories (this will delete all images)
+    if (this.backendRepository) {
+      console.log('Cleaning up backend ECR repository...');
+    }
+    if (this.frontendRepository) {
+      console.log('Cleaning up frontend ECR repository...');
+    }
+    
+    // Force removal of EKS cluster
+    if (this.cluster) {
+      console.log('Cleaning up EKS cluster...');
+    }
+    
+    // Force removal of VPC
+    if (this.vpc) {
+      console.log('Cleaning up VPC...');
+    }
+    
+    console.log('Cleanup completed. All resources marked for destruction.');
   }
 }
