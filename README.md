@@ -2,12 +2,32 @@
 
 [![Made with Nx](https://img.shields.io/badge/Made%20with-Nx-blue)](https://nx.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+
 [![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
 [![Material-UI](https://img.shields.io/badge/Material--UI-0081CB?logo=material-ui&logoColor=white)](https://mui.com/)
+
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+
 [![NestJS](https://img.shields.io/badge/NestJS-E0234E?logo=nestjs&logoColor=white)](https://nestjs.com/)
 
 A modern, full-stack AI chat application built with React, NestJS, and TypeScript in an Nx monorepo. Features real-time streaming, multi-language support, and a beautiful Material-UI interface.
+
+## 🎯 **Main Project Goal - Study DevOps Workflow**
+
+This project demonstrates a **complete DevOps workflow** for learning purposes with a **3-step process**:
+
+1. **🚀 SETUP & DEPLOY** - Deploy infrastructure and applications to AWS
+2. **🔄 DEVELOP & TRIGGER** - Make changes and let CI/CD automatically deploy
+3. **🧹 DESTROY & CLEANUP** - Remove all AWS resources to avoid charges
+
+**Perfect for:** Learning AWS, Kubernetes, CI/CD, and infrastructure-as-code without ongoing costs.
+
+**Key Benefits:**
+- ✅ **Zero ongoing charges** - Everything gets destroyed when done
+- ✅ **Complete DevOps experience** - From local development to production deployment
+- ✅ **Real AWS services** - EKS, ECR, VPC, GitHub Actions, GitHub Pages
+- ✅ **Automated cleanup** - Scripts to remove all resources
+- ✅ **Study project ready** - Clean slate for next learning session
 
 ## ✨ Features
 
@@ -117,78 +137,82 @@ curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo ba
 ./.devcontainer/setup-github-actions.sh
 ```
 
-## 🔄 CI/CD Pipeline - Temporary Setup (Build → Deploy → Clean Up)
+## 📋 **GitHub Actions Workflows**
+
+| Workflow | Purpose |
+|----------|---------|
+| `master.yml` | **Main orchestrator** - Runs on main branch, quick tests and build checks |
+| `development.yml` | **Development workflow** - Runs on develop/feature branches, full testing and linting |
+| `simple-cicd.yml` | **Complete CI/CD pipeline** - Full deployment pipeline for the entire project |
+| `frontend-deploy.yml` | **Frontend deployment** - Deploys frontend to GitHub Pages |
+| `infrastructure.yml` | **Infrastructure management** - AWS infrastructure deployment and management |
+| `cleanup.yml` | **Cleanup workflow** - Removes AWS resources when done |
+
+**Note:** These are the original working workflows that have been running successfully for weeks. They're designed for study purposes and can be disabled when you're done learning.
+
+## 🔄 **Complete DevOps Workflow (Study Project Setup)**
 
 ### 🎯 **Your 3-Phase CI/CD Workflow:**
 
-**Phase 1: 🚀 Setup & Deploy**
-- Setup AWS environment and roles
-- Deploy infrastructure to AWS
-- Enable CI/CD workflows
-- Frontend deploys to GitHub Pages
-- Backend deploys to EKS
+**Phase 1: 🚀 Setup AWS Infrastructure (IaC)**
+- Deploy AWS hosting support: ECR (Docker registry), EKS (Kubernetes), VPC (networking)
+- Configure IAM roles and permissions for CI/CD access
+- **Result**: AWS environment ready to host your applications
 
 **Phase 2: 🔄 Development & CI/CD**
-- Make changes and push to main
+- Make code changes and push to GitHub
 - GitHub Actions automatically:
-  - Build and test your code
+  - Build Docker images and push to ECR
   - Deploy frontend to GitHub Pages
-  - Deploy backend to EKS
-  - Update infrastructure if needed
+  - Deploy backend to EKS cluster
+- **Result**: Applications running on AWS infrastructure
 
 **Phase 3: 🧹 Complete Cleanup**
 - Disable all GitHub Actions workflows
-- Delete all AWS services and infrastructure
+- Delete all AWS infrastructure with CDK
 - Remove GitHub Pages deployment
-- **Result: Zero charges, clean slate**
-
-### Workflow Overview
-- **ACTIVE Workflows** (for your temporary deployment):
-  - `ci-cd.yml` - Main build and deployment pipeline
-  - `frontend-ci-cd.yml` - Frontend build and GitHub Pages deployment
-  - `backend-ci-cd.yml` - Backend build and EKS deployment
-  - `infrastructure-ci-cd.yml` - AWS infrastructure deployment
-
-- **DISABLED Workflows** (commented out to simplify setup):
-  - `master-ci-cd.yml` - Orchestrates all workflows (disabled)
-  - `monitoring-ci-cd.yml` - Monitoring and observability services (disabled)
+- **Result**: Zero charges, clean slate
 
 ### 🚀 **Complete CI/CD Workflow (3 Steps):**
 
-#### **Step 1: Environment Setup & AWS Configuration**
+#### **Step 1: Deploy AWS Infrastructure**
 ```bash
-# 1. Setup AWS environment
-./setup-aws-environment.sh
+# 1. Deploy AWS hosting support
+cd apps/infrastructure
+export $(cat ../../.secrets | grep -v '^#' | xargs)
+cdk deploy --all --require-approval never
 
-# 2. Add GitHub repository secrets:
-#    Go to: Settings → Secrets and variables → Actions
-#    Add: AWS_ACCOUNT_ID, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
-
-# 3. Verify setup
-aws sts get-caller-identity
+# What gets created:
+# ✅ ECR repositories (Docker registry)
+# ✅ EKS cluster (Kubernetes for backend)
+# ✅ VPC with networking
+# ✅ IAM roles for CI/CD access
 ```
 
-#### **Step 2: Trigger CI/CD Pipeline**
+#### **Step 2: Configure GitHub Actions & Deploy**
 ```bash
-# Push changes to trigger all workflows
+# 1. Add GitHub repository secrets:
+#    Go to: Settings → Secrets and variables → Actions
+#    Add: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+
+# 2. Push changes to trigger CI/CD
 git add .
 git commit -m "Trigger CI/CD pipeline"
 git push origin main
 
 # What happens automatically:
-# ✅ Infrastructure deploys to AWS (EKS, ECR, VPC, etc.)
-# ✅ Backend builds and deploys to EKS
 # ✅ Frontend builds and deploys to GitHub Pages
-# ✅ All services become available online
+# ✅ Backend builds, pushes to ECR, deploys to EKS
+# ✅ All using the AWS infrastructure created in Step 1
 ```
 
-#### **Step 3: Cleanup & Teardown (When Done)**
+#### **Step 3: Cleanup When Done**
 ```bash
-# 1. Disable all GitHub Actions workflows
-#    Comment out all workflow files in .github/workflows/
+# 1. Disable GitHub Actions workflows
+#    Comment out all .github/workflows/*.yml files
 
 # 2. Delete AWS infrastructure
-./teardown-infrastructure.sh
+./cleanup-aws.sh
 
 # 3. Remove GitHub Pages deployment
 #    Go to: Settings → Pages → Source → None
@@ -196,34 +220,38 @@ git push origin main
 # 4. Result: Zero charges, clean slate
 ```
 
-### Local Testing
-```bash
-# Test workflows locally before pushing
-act -W .github/workflows/frontend-ci-cd.yml --job build-and-test --dryrun --bind
-act -W .github/workflows/backend-ci-cd.yml --job build-and-test --dryrun --bind
-act -W .github/workflows/infrastructure-ci-cd.yml --job build-and-test --dryrun --bind
-```
+### 🔧 **What Gets Deployed**
 
-### Re-enabling Optional Workflows
-If you need the master orchestration or monitoring workflows:
-1. Uncomment the desired workflow file in `.github/workflows/`
-2. Remove the `# DISABLED:` comments
-3. The workflow will automatically become active again
+### **AWS Infrastructure (CDK) - Hosting Support Only**
+- **VPC**: Simple networking with public/private subnets and NAT gateway
+- **ECR Repositories**: Docker registry for backend and frontend images
+- **EKS Cluster**: Minimal Kubernetes cluster for backend hosting
+- **IAM Roles**: Proper permissions for CI/CD to access AWS services
+
+### **Applications (GitHub Actions)**
+- **Frontend**: Deployed to GitHub Pages via GitHub Actions
+- **Backend**: Built, pushed to ECR, deployed to EKS via GitHub Actions
+- **CI/CD**: Uses the AWS infrastructure created by CDK
 
 ### 🔧 **Quick Commands Reference:**
 
 #### **Setup & Deploy:**
 ```bash
-# Complete setup and deployment
-./setup-aws-environment.sh                    # Setup AWS
-git push origin main                          # Trigger CI/CD
-# Wait for completion, then access your deployed services
+# 1. Deploy AWS infrastructure
+cd apps/infrastructure
+export $(cat ../../.secrets | grep -v '^#' | xargs)
+cdk deploy --all --require-approval never
+
+# 2. Trigger CI/CD (after adding GitHub secrets)
+git push origin main
+
+# Result: Applications running on AWS infrastructure
 ```
 
 #### **Cleanup & Teardown:**
 ```bash
 # Complete cleanup (when done testing)
-./teardown-infrastructure.sh                  # Delete AWS resources
+./cleanup-aws.sh                              # Delete AWS resources
 # Comment out all .github/workflows/*.yml files
 # Disable GitHub Pages in repository settings
 # Result: Zero charges, clean slate
@@ -395,10 +423,10 @@ When you're done testing your CI/CD pipeline, use these scripts to clean up ever
 
 ```bash
 # 1. Delete all AWS infrastructure (prevents charges)
-./teardown-infrastructure.sh
+./cleanup-aws.sh
 
 # 2. Disable GitHub Actions workflows
-#    Comment out all files in .github/workflows/
+#    Comment out all workflow files in .github/workflows/
 
 # 3. Remove GitHub Pages deployment
 #    Go to: Settings → Pages → Source → None
@@ -432,3 +460,5 @@ aws ecr describe-repositories  # Should show no repos
 ---
 
 **Built with ❤️ using React, NestJS, and Nx**
+
+> **Remember**: Always clean up AWS resources when you're done to avoid unexpected charges!
