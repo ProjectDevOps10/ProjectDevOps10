@@ -35,7 +35,6 @@ export interface CostOptimizedInfrastructureStackProps extends cdk.StackProps {
 export class CostOptimizedInfrastructureStack extends cdk.Stack {
   public readonly cluster: eks.Cluster;
   public readonly backendRepository: ecr.Repository;
-  public readonly frontendRepository: ecr.Repository;
   public readonly vpc: ec2.Vpc;
 
   constructor(scope: Construct, id: string, props: CostOptimizedInfrastructureStackProps) {
@@ -82,17 +81,7 @@ export class CostOptimizedInfrastructureStack extends cdk.Stack {
       ],
     });
 
-    this.frontendRepository = new ecr.Repository(this, 'FrontendRepository', {
-      repositoryName: 'iagent-frontend',
-      imageScanOnPush: true,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      lifecycleRules: [
-        {
-          description: 'Keep only latest 5 images',
-          maxImageCount: 5,
-        },
-      ],
-    });
+    // Frontend deployed to GitHub Pages - no ECR needed
 
     // EKS Service Role
     const eksServiceRole = new iam.Role(this, 'EKSServiceRole', {
@@ -155,9 +144,9 @@ export class CostOptimizedInfrastructureStack extends cdk.Stack {
       value: this.backendRepository.repositoryUri,
     });
 
-    new cdk.CfnOutput(this, 'FrontendRepositoryUri', {
-      description: 'Frontend ECR Repository URI',
-      value: this.frontendRepository.repositoryUri,
+    new cdk.CfnOutput(this, 'FrontendDeployment', {
+      description: 'Frontend deployed to GitHub Pages',
+      value: 'GitHub Pages (see frontend-deploy.yml workflow)',
     });
 
     new cdk.CfnOutput(this, 'VpcId', {

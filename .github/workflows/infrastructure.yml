@@ -59,21 +59,21 @@ jobs:
         if: github.event.inputs.action == 'deploy' || github.event.inputs.action == null
         run: |
           echo "🚀 Deploying infrastructure..."
-          cd dist/apps/infrastructure
-          cdk deploy --all --require-approval never
+          cd apps/infrastructure
+          npx cdk deploy --all --require-approval never
           echo "✅ Infrastructure deployed successfully!"
 
       - name: 💥 Destroy Infrastructure
         if: github.event.inputs.action == 'destroy'
         run: |
           echo "💥 Destroying infrastructure..."
-          cd dist/apps/infrastructure
-          cdk destroy --all --force --require-approval never
+          cd apps/infrastructure
+          npx cdk destroy --all --force --require-approval never
           echo "✅ Infrastructure destroyed successfully!"
 
       - name: 📊 Infrastructure Status
         run: |
           echo "📊 Checking infrastructure status..."
-          cd dist/apps/infrastructure
-          cdk list
+          cd apps/infrastructure
+          npx cdk list
           echo "✅ Infrastructure status check completed!"
