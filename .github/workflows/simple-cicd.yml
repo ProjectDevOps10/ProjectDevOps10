@@ -124,14 +124,27 @@ jobs:
 
     - name: 🛠️ Install AWS CLI and kubectl
       run: |
-        # Install AWS CLI
-        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-        unzip awscliv2.zip
-        sudo ./aws/install
+        # Check if AWS CLI is already installed, if so update it
+        if command -v aws &> /dev/null; then
+          echo "AWS CLI already installed, updating..."
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install --update
+        else
+          echo "Installing AWS CLI..."
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install
+        fi
         
-        # Install kubectl
-        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-        sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+        # Install kubectl if not already installed
+        if ! command -v kubectl &> /dev/null; then
+          echo "Installing kubectl..."
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+        else
+          echo "kubectl already installed"
+        fi
         
         # Verify installations
         aws --version
