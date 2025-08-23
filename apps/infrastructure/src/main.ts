@@ -13,7 +13,7 @@ const enableSpotInstances = false; // Disable spot instances to avoid quota issu
 new CostOptimizedInfrastructureStack(app, 'IAgentInfrastructureStack', {
   clusterName,
   nodeGroupInstanceType: instanceType,
-  nodeGroupMinSize: 0,
+  nodeGroupMinSize: 1,
   nodeGroupMaxSize: 1,
   nodeGroupDesiredSize: 1,
   enableSpotInstances,

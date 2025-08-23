@@ -123,9 +123,9 @@ export class CostOptimizedInfrastructureStack extends cdk.Stack {
       subnets: this.vpc.privateSubnets.map(subnet => subnet.subnetId),
       instanceTypes: [instanceType],
       scalingConfig: {
-        minSize: 1,
-        maxSize: 2,
-        desiredSize: 2,
+        minSize: minSize,
+        maxSize: maxSize,
+        desiredSize: desiredSize,
       },
       capacityType: enableSpotInstances ? 'SPOT' : 'ON_DEMAND',
       diskSize: 20,
