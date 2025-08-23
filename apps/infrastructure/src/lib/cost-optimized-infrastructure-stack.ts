@@ -102,23 +102,52 @@ export class CostOptimizedInfrastructureStack extends cdk.Stack {
       ],
     });
 
-    // TODO: EKS cluster temporarily disabled due to Lambda permission issues
-    // Will be added back once we resolve the AWS permissions
-    this.cluster = undefined as any;
+    // FUCK THE LAMBDA LAYERS! Use pure CloudFormation EKS resources
+    // Create EKS cluster using raw CloudFormation - NO CDK MAGIC, NO LAMBDA
+    const rawEksCluster = new eks.CfnCluster(this, 'IAgentCluster', {
+      name: clusterName,
+      version: '1.28',
+      roleArn: eksServiceRole.roleArn,
+      resourcesVpcConfig: {
+        subnetIds: [
+          ...this.vpc.privateSubnets.map(subnet => subnet.subnetId),
+          ...this.vpc.publicSubnets.map(subnet => subnet.subnetId),
+        ],
+      },
+    });
 
-    // Node Group Role for EKS workers (kept for future use)
+    // Create node group role
     const nodeGroupRole = new iam.Role(this, 'NodeGroupRole', {
       assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSWorkerNodePolicy'),
         iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKS_CNI_Policy'),
         iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEC2ContainerRegistryReadOnly'),
-        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'),
       ],
     });
 
-    // TODO: Node group creation disabled until EKS cluster is working
-    // Will be added back once we resolve the AWS permissions
+    // Create node group using raw CloudFormation - NO CDK MAGIC
+    const rawNodeGroup = new eks.CfnNodegroup(this, 'SimpleNodeGroup', {
+      clusterName: rawEksCluster.name!,
+      nodegroupName: 'simple-nodegroup',
+      nodeRole: nodeGroupRole.roleArn,
+      subnets: this.vpc.privateSubnets.map(subnet => subnet.subnetId),
+      instanceTypes: [instanceType],
+      scalingConfig: {
+        minSize: 1,
+        maxSize: 2,
+        desiredSize: 2,
+      },
+      capacityType: enableSpotInstances ? 'SPOT' : 'ON_DEMAND',
+      diskSize: 20,
+      amiType: 'AL2_x86_64',
+    });
+
+    // Make sure node group waits for cluster
+    rawNodeGroup.addDependency(rawEksCluster);
+
+    // Store cluster name for outputs (create fake cluster object)
+    this.cluster = { clusterName: rawEksCluster.name! } as any;
 
     // Outputs for GitHub Actions to use
     new cdk.CfnOutput(this, 'BackendRepositoryUri', {
@@ -138,7 +167,7 @@ export class CostOptimizedInfrastructureStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'ClusterName', {
       description: 'EKS Cluster Name',
-      value: 'EKS_CLUSTER_TEMPORARILY_DISABLED',
+      value: this.cluster.clusterName,
     });
 
     new cdk.CfnOutput(this, 'EstimatedMonthlyCost', {
