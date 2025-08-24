@@ -28,8 +28,8 @@ npx cdk deploy --all --require-approval never
 
 # Check deployment
 echo "📊 Checking deployment status..."
-aws eks describe-cluster --name iagent-cluster-v2 --region eu-central-1 --query "cluster.status" --output text
-aws eks describe-nodegroup --cluster-name iagent-cluster-v2 --nodegroup-name simple-nodegroup --region eu-central-1 --query "nodegroup.{Status:status,Min:scalingConfig.minSize,Max:scalingConfig.maxSize,Desired:scalingConfig.desiredSize}" --output table
+aws eks describe-cluster --name iagent-cluster --region eu-central-1 --query "cluster.status" --output text
+aws eks describe-nodegroup --cluster-name iagent-cluster --nodegroup-name simple-nodegroup --region eu-central-1 --query "nodegroup.{Status:status,Min:scalingConfig.minSize,Max:scalingConfig.maxSize,Desired:scalingConfig.desiredSize}" --output table
 
 echo ""
 echo "🎉 SETUP COMPLETE!"

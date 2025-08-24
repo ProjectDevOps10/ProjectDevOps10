@@ -14,8 +14,8 @@ permissions:
 
 env:
   AWS_REGION: eu-central-1
-  CLUSTER_NAME: iagent-cluster-v2
-  ECR_BACKEND: iagent-backend-v3
+  CLUSTER_NAME: iagent-cluster
+  ECR_BACKEND: iagent-backend
 
 jobs:
   # Phase 1: Build & Test

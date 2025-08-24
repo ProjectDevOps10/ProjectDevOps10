@@ -6,16 +6,16 @@ import { CostOptimizedInfrastructureStack } from './lib/cost-optimized-infrastru
 const app = new cdk.App();
 
 // Get parameters from context or environment
-const clusterName = app.node.tryGetContext('clusterName') || 'iagent-cluster-v2';
-const instanceType = app.node.tryGetContext('nodeGroupInstanceType') || 't3.small';
+const clusterName = app.node.tryGetContext('clusterName') || 'iagent-cluster';
+const instanceType = app.node.tryGetContext('nodeGroupInstanceType') || 't3.micro';
 const enableSpotInstances = false; // Disable spot instances to avoid quota issues
 
-new CostOptimizedInfrastructureStack(app, 'IAgentInfrastructureStackV3', {
+new CostOptimizedInfrastructureStack(app, 'IAgentInfrastructureStackV4', {
   clusterName,
   nodeGroupInstanceType: instanceType,
   nodeGroupMinSize: 0,
-  nodeGroupMaxSize: 2,
-  nodeGroupDesiredSize: 1,
+  nodeGroupMaxSize: 1,
+  nodeGroupDesiredSize: 0,
   enableSpotInstances,
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,

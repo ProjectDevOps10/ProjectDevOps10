@@ -149,7 +149,7 @@ AWS_ACCOUNT_ID=<your-aws-account-id>
 - **Frontend**: Visit your GitHub Pages URL
 - **Backend**: `kubectl get pods -n iagent`
 - **Infrastructure**: `aws cloudformation list-stacks`
-- **Node Group**: `aws eks describe-nodegroup --cluster-name iagent-cluster-v2 --nodegroup-name simple-nodegroup --region eu-central-1 --query "nodegroup.status"`
+- **Node Group**: `aws eks describe-nodegroup --cluster-name iagent-cluster --nodegroup-name simple-nodegroup --region eu-central-1 --query "nodegroup.status"`
 
 ### Logs:
 - **GitHub Actions**: Repository → Actions tab
@@ -166,7 +166,7 @@ The EKS node group can take 15-20 minutes to provision. If GitHub Actions times 
 
 2. **Check node group status**:
    ```bash
-   aws eks describe-nodegroup --cluster-name iagent-cluster-v2 --nodegroup-name simple-nodegroup --region eu-central-1
+   aws eks describe-nodegroup --cluster-name iagent-cluster --nodegroup-name simple-nodegroup --region eu-central-1
    ```
 
 3. **If node group is still CREATING**, you can either:
@@ -177,7 +177,7 @@ The EKS node group can take 15-20 minutes to provision. If GitHub Actions times 
 4. **Manual deployment once node group is ACTIVE**:
    ```bash
    # Update kubeconfig
-   aws eks update-kubeconfig --region eu-central-1 --name iagent-cluster-v2
+   aws eks update-kubeconfig --region eu-central-1 --name iagent-cluster
    
    # Apply Kubernetes resources
    kubectl apply -f apps/infrastructure/src/k8s/namespace.yaml

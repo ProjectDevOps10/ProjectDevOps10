@@ -70,7 +70,7 @@ export class CostOptimizedInfrastructureStack extends cdk.Stack {
 
     // Create ECR Repositories for Docker images
     this.backendRepository = new ecr.Repository(this, 'BackendRepository', {
-      repositoryName: 'iagent-backend-v3',
+      repositoryName: 'iagent-backend',
       imageScanOnPush: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       lifecycleRules: [
@@ -95,7 +95,7 @@ export class CostOptimizedInfrastructureStack extends cdk.Stack {
     // Create EKS cluster using raw CloudFormation - NO CDK MAGIC, NO LAMBDA
     const rawEksCluster = new eks.CfnCluster(this, 'IAgentCluster', {
       name: clusterName,
-      version: '1.28',
+      version: '1.31',
       roleArn: eksServiceRole.roleArn,
       resourcesVpcConfig: {
         subnetIds: [
@@ -116,6 +116,8 @@ export class CostOptimizedInfrastructureStack extends cdk.Stack {
     });
 
     // Create node group using raw CloudFormation - NO CDK MAGIC
+    // TEMPORARILY DISABLED DUE TO EC2 QUOTA - WILL SCALE UP MANUALLY AFTER CLUSTER IS READY
+    /*
     const rawNodeGroup = new eks.CfnNodegroup(this, 'SimpleNodeGroup', {
       clusterName: rawEksCluster.name!,
       nodegroupName: 'simple-nodegroup',
@@ -134,6 +136,7 @@ export class CostOptimizedInfrastructureStack extends cdk.Stack {
 
     // Make sure node group waits for cluster
     rawNodeGroup.addDependency(rawEksCluster);
+    */
 
     // Store cluster name for outputs (create fake cluster object)
     this.cluster = { clusterName: rawEksCluster.name! } as any;

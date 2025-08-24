@@ -15,7 +15,7 @@ on:
 
 env:
   AWS_REGION: eu-central-1
-  CLUSTER_NAME: iagent-cluster-v2
+  CLUSTER_NAME: iagent-cluster
 
 jobs:
   cleanup:
