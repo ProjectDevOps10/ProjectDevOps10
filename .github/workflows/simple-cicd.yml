@@ -102,6 +102,11 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_BACKEND:latest
         
         echo "✅ Backend image pushed successfully!"
+        
+    - name: 🎨 Trigger Frontend Deployment
+      run: |
+        echo "✅ Backend deployed, frontend will deploy via separate workflow"
+        echo "🌐 Frontend URL: https://ProjectDevOps10.github.io/iAgent"
 
   # Phase 3: Deploy to AWS
   deploy-to-aws:
