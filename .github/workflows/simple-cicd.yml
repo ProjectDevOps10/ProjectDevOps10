@@ -103,29 +103,18 @@ jobs:
         
         echo "✅ Backend image pushed successfully!"
         
-    - name: 🎨 Build and Deploy Frontend to GitHub Pages
+    - name: 🎨 Build Frontend
       run: |
         echo "🏗️ Building frontend..."
         npx nx build frontend --prod
+        echo "✅ Frontend built successfully!"
         
-        echo "📤 Deploying to GitHub Pages..."
-        cd dist/apps/frontend
-        
-        # Configure git for deployment
-        git config --global user.name "GitHub Actions"
-        git config --global user.email "actions@github.com"
-        
-        # Initialize git repo in dist folder
-        git init
-        git add .
-        git commit -m "Deploy frontend to GitHub Pages"
-        
-        # Force push to gh-pages branch
-        git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-        git branch -M gh-pages
-        git push -f origin gh-pages
-        
-        echo "✅ Frontend deployed to GitHub Pages!"
+    - name: 📤 Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GIT_TOKEN }}
+        publish_dir: ./dist/apps/frontend
+        cname: false
 
   # Phase 3: Deploy to AWS
   deploy-to-aws:

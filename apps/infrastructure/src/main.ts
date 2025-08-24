@@ -10,7 +10,7 @@ const clusterName = app.node.tryGetContext('clusterName') || 'iagent-cluster-v2'
 const instanceType = app.node.tryGetContext('nodeGroupInstanceType') || 't3.small';
 const enableSpotInstances = false; // Disable spot instances to avoid quota issues
 
-new CostOptimizedInfrastructureStack(app, 'IAgentInfrastructureStackV2', {
+new CostOptimizedInfrastructureStack(app, 'IAgentInfrastructureStackV3', {
   clusterName,
   nodeGroupInstanceType: instanceType,
   nodeGroupMinSize: 0,
