@@ -12,6 +12,9 @@ const restoreDirection = () => {
   
   if (storedDirection && storedLang) {
     document.documentElement.dir = storedDirection;
+
+
+    
     document.documentElement.lang = storedLang;
   }
 };
