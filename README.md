@@ -462,3 +462,4 @@ aws ecr describe-repositories  # Should show no repos
 **Built with ❤️ using React, NestJS, and Nx**
 
 > **Remember**: Always clean up AWS resources when you're done to avoid unexpected charges!
+# Deploy backend to EKS
