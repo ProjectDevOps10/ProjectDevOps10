@@ -70,7 +70,7 @@ export class CostOptimizedInfrastructureStack extends cdk.Stack {
 
     // Create ECR Repositories for Docker images
     this.backendRepository = new ecr.Repository(this, 'BackendRepository', {
-      repositoryName: 'iagent-backend',
+      repositoryName: 'iagent-backend-v3',
       imageScanOnPush: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       lifecycleRules: [

@@ -15,7 +15,7 @@ permissions:
 env:
   AWS_REGION: eu-central-1
   CLUSTER_NAME: iagent-cluster-v2
-  ECR_BACKEND: iagent-backend
+  ECR_BACKEND: iagent-backend-v3
 
 jobs:
   # Phase 1: Build & Test
@@ -102,19 +102,6 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_BACKEND:latest
         
         echo "✅ Backend image pushed successfully!"
-        
-    - name: 🎨 Build Frontend
-      run: |
-        echo "🏗️ Building frontend..."
-        npx nx build frontend --prod
-        echo "✅ Frontend built successfully!"
-        
-    - name: 📤 Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GIT_TOKEN }}
-        publish_dir: ./dist/apps/frontend
-        cname: false
 
   # Phase 3: Deploy to AWS
   deploy-to-aws:
