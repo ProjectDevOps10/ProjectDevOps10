@@ -207,7 +207,14 @@ jobs:
     - name: 🎯 Install AWS Load Balancer Controller
       run: |
         echo "🎯 Installing AWS Load Balancer Controller for ALB support..."
-        ./scripts/install-alb-controller.sh ${{ env.CLUSTER_NAME }} ${{ env.AWS_REGION }}
+        
+        # Try to install ALB controller, but continue if it fails
+        if ./scripts/install-alb-controller.sh ${{ env.CLUSTER_NAME }} ${{ env.AWS_REGION }}; then
+          echo "✅ AWS Load Balancer Controller installed successfully"
+        else
+          echo "⚠️ ALB Controller installation failed, but continuing with deployment"
+          echo "ℹ️ ALB Ingress may not work until controller is manually installed"
+        fi
         
     - name: 🚀 Deploy to Kubernetes
       env:
@@ -219,8 +226,13 @@ jobs:
         # Apply backend deployment to default namespace (Fargate)
         echo "🚀 Deploying backend to Fargate (default namespace)..."
         
-        # Apply the backend deployment directly (it's already configured for default namespace)
-        kubectl apply -f apps/infrastructure/src/k8s/backend-deployment.yaml --validate=false
+        # Try the full deployment first, fall back to simple if needed
+        if kubectl apply -f apps/infrastructure/src/k8s/backend-deployment.yaml --validate=false; then
+          echo "✅ Full backend deployment applied"
+        else
+          echo "⚠️ Full deployment failed, trying simple deployment..."
+          kubectl apply -f apps/infrastructure/src/k8s/backend-deployment-simple.yaml --validate=false
+        fi
         
         # Update deployment with new image (use the deployment name from the file)
         kubectl set image deployment/iagent-backend backend=$ECR_REGISTRY/$ECR_BACKEND:$IMAGE_TAG -n default
