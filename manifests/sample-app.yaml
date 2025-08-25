@@ -1,0 +1,220 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iagent-sample
+  namespace: default
+  labels:
+    app: iagent-sample
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: iagent-sample
+  template:
+    metadata:
+      labels:
+        app: iagent-sample
+        version: v1
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:stable-alpine
+        ports:
+        - containerPort: 80
+          protocol: TCP
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        env:
+        - name: DEPLOYMENT_TYPE
+          value: "fargate"
+        - name: CLUSTER_NAME
+          value: "iagent-cluster"
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
+        volumeMounts:
+        - name: custom-html
+          mountPath: /usr/share/nginx/html
+      volumes:
+      - name: custom-html
+        configMap:
+          name: iagent-sample-html
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iagent-sample-html
+  namespace: default
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>iAgent on AWS Fargate</title>
+        <style>
+            body { 
+                font-family: Arial, sans-serif; 
+                margin: 40px; 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                text-align: center;
+            }
+            .container { 
+                max-width: 800px; 
+                margin: 0 auto; 
+                padding: 20px;
+                background: rgba(255,255,255,0.1);
+                border-radius: 10px;
+                backdrop-filter: blur(10px);
+            }
+            .status { 
+                background: #4CAF50; 
+                padding: 10px; 
+                border-radius: 5px; 
+                margin: 20px 0; 
+            }
+            .metrics {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 20px;
+                margin: 20px 0;
+            }
+            .metric {
+                background: rgba(255,255,255,0.2);
+                padding: 15px;
+                border-radius: 8px;
+            }
+            code { 
+                background: rgba(0,0,0,0.3); 
+                padding: 2px 4px; 
+                border-radius: 3px; 
+            }
+        </style>
+        <script>
+            function updateTime() {
+                document.getElementById('time').innerHTML = new Date().toLocaleString();
+            }
+            setInterval(updateTime, 1000);
+            window.onload = updateTime;
+        </script>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🚀 iAgent Sample App</h1>
+            <h2>Running on AWS EKS Fargate</h2>
+            
+            <div class="status">
+                ✅ Application is healthy and running on Fargate!
+            </div>
+            
+            <div class="metrics">
+                <div class="metric">
+                    <h3>⚡ Fast Starts</h3>
+                    <p>Pod start time: <strong>&lt; 2 minutes</strong></p>
+                </div>
+                <div class="metric">
+                    <h3>💰 Cost Optimized</h3>
+                    <p>Pay only for resources you request</p>
+                </div>
+                <div class="metric">
+                    <h3>🔧 Serverless</h3>
+                    <p>No EC2 nodes to manage</p>
+                </div>
+                <div class="metric">
+                    <h3>🌐 Load Balanced</h3>
+                    <p>ALB with IP target type</p>
+                </div>
+            </div>
+            
+            <div style="margin: 20px 0;">
+                <h3>📊 Runtime Info</h3>
+                <p><strong>Current Time:</strong> <span id="time"></span></p>
+                <p><strong>Deployment:</strong> <code>Fargate</code></p>
+                <p><strong>Cluster:</strong> <code>iagent-cluster</code></p>
+                <p><strong>Region:</strong> <code>eu-central-1</code></p>
+                <p><strong>Namespace:</strong> <code>default</code></p>
+            </div>
+            
+            <div style="margin: 20px 0;">
+                <h3>🧪 Test Endpoints</h3>
+                <p><a href="/" style="color: #FFD700;">Health Check</a> | 
+                   <a href="/nginx-status" style="color: #FFD700;">NGINX Status</a></p>
+            </div>
+            
+            <div style="margin: 20px 0; font-size: 14px; opacity: 0.8;">
+                <p>This sample demonstrates AWS EKS Fargate capabilities:<br/>
+                Fast pod starts, serverless containers, and cost optimization</p>
+            </div>
+        </div>
+    </body>
+    </html>
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iagent-sample
+  namespace: default
+  labels:
+    app: iagent-sample
+spec:
+  type: ClusterIP
+  selector:
+    app: iagent-sample
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: iagent-sample
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip  # Required for Fargate
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+    alb.ingress.kubernetes.io/tags: Environment=fargate,Cluster=iagent-cluster,App=sample
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: '15'
+    alb.ingress.kubernetes.io/healthy-threshold-count: '2'
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: '2'
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: iagent-sample
+            port:
+              number: 80
