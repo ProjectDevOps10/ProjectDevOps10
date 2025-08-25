@@ -168,35 +168,36 @@ jobs:
         aws eks wait cluster-active --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
         echo "✅ EKS cluster is active"
         
-        # Wait for node group to be ACTIVE (with better timeout handling)
-        echo "⏳ Waiting for node group to be ready (max 20 minutes)..."
+        # Check for Fargate profiles instead of node groups
+        echo "🚀 Checking Fargate profiles (Fargate deployment)..."
+        
+        # Wait for Fargate profile to be ACTIVE
+        echo "⏳ Waiting for Fargate profile to be ready..."
         start_time=$(date +%s)
-        timeout_seconds=1200  # 20 minutes
+        timeout_seconds=600  # 10 minutes for Fargate
         
         while true; do
           current_time=$(date +%s)
           elapsed=$((current_time - start_time))
           
           if [ $elapsed -gt $timeout_seconds ]; then
-            echo "⚠️ Timeout reached (20 minutes). Node group may still be creating."
-            echo "ℹ️ Proceeding with deployment anyway (will use --validate=false)..."
+            echo "⚠️ Timeout reached (10 minutes). Fargate profile may still be creating."
+            echo "ℹ️ Proceeding with deployment anyway..."
             break
           fi
           
-          status=$(aws eks describe-nodegroup --cluster-name ${{ env.CLUSTER_NAME }} --nodegroup-name simple-nodegroup --region ${{ env.AWS_REGION }} --query "nodegroup.status" --output text 2>/dev/null || echo "UNKNOWN")
-          echo "📊 Current status: $status (${elapsed}s elapsed)"
+          status=$(aws eks describe-fargate-profile --cluster-name ${{ env.CLUSTER_NAME }} --fargate-profile-name fp-default --region ${{ env.AWS_REGION }} --query "fargateProfile.status" --output text 2>/dev/null || echo "UNKNOWN")
+          echo "🚀 Fargate profile status: $status (${elapsed}s elapsed)"
           
           if [ "$status" = "ACTIVE" ]; then
-            echo "✅ Node group is active!"
+            echo "✅ Fargate profile is active!"
             break
           elif [ "$status" = "CREATE_FAILED" ] || [ "$status" = "DEGRADED" ]; then
-            echo "❌ Node group creation failed with status: $status"
-            echo "🔍 Checking for issues..."
-            aws eks describe-nodegroup --cluster-name ${{ env.CLUSTER_NAME }} --nodegroup-name simple-nodegroup --region ${{ env.AWS_REGION }} --query "nodegroup.health.issues"
+            echo "❌ Fargate profile creation failed with status: $status"
             exit 1
           fi
           
-          sleep 60  # Check every minute
+          sleep 30  # Check every 30 seconds for Fargate
         done
         
         # Verify kubectl access
@@ -210,36 +211,45 @@ jobs:
       run: |
         echo "🚀 Deploying to Kubernetes..."
         
-        # Apply namespace (with validation disabled as fallback)
-        kubectl apply -f apps/infrastructure/src/k8s/namespace.yaml --validate=false
+        # Apply backend deployment to default namespace (Fargate)
+        echo "🚀 Deploying backend to Fargate (default namespace)..."
         
-        # Apply secrets if they exist
-        if [ -f "apps/infrastructure/src/k8s/secrets.yaml" ]; then
-          kubectl apply -f apps/infrastructure/src/k8s/secrets.yaml --validate=false
-        fi
+        # Apply the backend deployment directly (it's already configured for default namespace)
+        kubectl apply -f apps/infrastructure/src/k8s/backend-deployment.yaml --validate=false
         
-        # Update deployment with new image
-        kubectl set image deployment/iagent-backend iagent-backend=$ECR_REGISTRY/$ECR_BACKEND:$IMAGE_TAG -n iagent
+        # Update deployment with new image (use the deployment name from the file)
+        kubectl set image deployment/iagent-backend backend=$ECR_REGISTRY/$ECR_BACKEND:$IMAGE_TAG -n default
         
-        # Wait for rollout
-        kubectl rollout status deployment/iagent-backend -n iagent --timeout=300s
+        # Wait for rollout in default namespace
+        kubectl rollout status deployment/iagent-backend -n default --timeout=600s
         
         echo "✅ Backend deployed successfully!"
         
     - name: 📊 Verify deployment
       run: |
-        echo "📋 Pod Status:"
-        kubectl get pods -n iagent
+        echo "📋 Pod Status (Fargate):"
+        kubectl get pods -n default -l app=iagent-backend -o wide
         
         echo "🌐 Service Status:"
-        kubectl get svc -n iagent
+        kubectl get svc -n default
         
         echo "📈 Deployment Status:"
-        kubectl get deployment iagent-backend -n iagent
+        kubectl get deployment iagent-backend -n default
+        
+        echo "🔗 Ingress Status (ALB):"
+        kubectl get ingress -n default
+        
+        echo "🚀 Fargate Nodes:"
+        kubectl get nodes -l eks.amazonaws.com/compute-type=fargate || echo "No Fargate nodes visible yet"
         
     - name: 🎉 Success notification
       run: |
         echo "🚀 Deployment completed successfully!"
         echo "📊 Application deployed to EKS cluster: ${{ env.CLUSTER_NAME }}"
         echo "🐳 Images pushed to ECR with tag: ${{ github.sha }}"
-        echo "🌐 Backend available in namespace: iagent"
+        echo "🌐 Backend available in namespace: default (Fargate)"
+        echo "⚡ Fast pod starts with serverless Fargate infrastructure"
+        
+        # Try to get ALB URL
+        ALB_URL=$(kubectl get ingress iagent-backend-ingress -n default -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "ALB provisioning...")
+        echo "🔗 API URL: http://$ALB_URL (may take a few minutes for ALB to be ready)"
