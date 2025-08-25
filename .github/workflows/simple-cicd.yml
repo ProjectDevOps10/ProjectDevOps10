@@ -204,6 +204,11 @@ jobs:
         echo "🔍 Testing kubectl access..."
         kubectl get nodes || echo "❌ kubectl access failed, but proceeding with --validate=false"
         
+    - name: 🎯 Install AWS Load Balancer Controller
+      run: |
+        echo "🎯 Installing AWS Load Balancer Controller for ALB support..."
+        ./scripts/install-alb-controller.sh ${{ env.CLUSTER_NAME }} ${{ env.AWS_REGION }}
+        
     - name: 🚀 Deploy to Kubernetes
       env:
         ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
